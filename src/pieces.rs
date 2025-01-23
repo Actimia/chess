@@ -2,13 +2,13 @@ use std::fmt::Display;
 
 use crate::board::{Board, Position};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Color {
     White,
     Black,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PieceType {
     Pawn,
     Bishop,
@@ -29,17 +29,28 @@ impl Piece {
     pub fn get_moves(&self, board: &Board, position: &Position) -> Vec<Move> {
         match self.typ {
             PieceType::Pawn => self.moves_pawn(board, position),
-            PieceType::Bishop => self.moves_pawn(board, position),
-            PieceType::Knight => self.moves_pawn(board, position),
-            PieceType::Rook => self.moves_pawn(board, position),
-            PieceType::Queen => self.moves_pawn(board, position),
-            PieceType::King => self.moves_pawn(board, position),
+            PieceType::Bishop => self.moves_bishop(board, position),
+            PieceType::Knight => self.moves_knight(board, position),
+            PieceType::Rook => self.moves_rook(board, position),
+            PieceType::Queen => self.moves_queen(board, position),
+            PieceType::King => self.moves_king(board, position),
         }
     }
 
     fn moves_pawn(&self, board: &Board, position: &Position) -> Vec<Move> {
-        let up = 8;
-        Vec::new()
+        let up = match self.color {
+            Color::Black => -1,
+            Color::White => 1,
+        };
+        let mut moves = vec![(up, 0)];
+        if !self.has_moved {
+            moves.push((2 * up, 0));
+        }
+
+        moves
+            .into_iter()
+            .map(|offset| Move::from_offset(*position, offset))
+            .collect()
     }
     fn moves_bishop(&self, board: &Board, position: &Position) -> Vec<Move> {
         Vec::new()
@@ -113,19 +124,34 @@ impl Square {
 }
 
 pub enum SpecialMove {
-    EnPassant,
+    EnPassant, // possibly not needed
     Promotion(PieceType),
     Castling,
 }
 pub struct Move {
-    from: Square,
+    from: Position,
     to: Position,
     special: Option<SpecialMove>,
 }
 
 impl Move {
-    pub fn get_notation() -> String {
-        // impl Display instead?
-        return "".into();
+    pub fn from_offset(from: Position, (rank_offset, file_offset): (i32, i32)) -> Move {
+        let to: Position = (
+            from.rank() as i32 + rank_offset,
+            from.file() as i32 + file_offset,
+        )
+            .into();
+        Move {
+            from,
+            to,
+            special: None,
+        }
+    }
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} -> {}", self.from, self.to)?;
+        Ok(())
     }
 }

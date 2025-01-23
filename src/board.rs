@@ -20,6 +20,13 @@ impl From<(usize, usize)> for Position {
         Position(rank * 8 + file)
     }
 }
+impl From<(i32, i32)> for Position {
+    fn from((file, rank): (i32, i32)) -> Self {
+        assert!(rank >= 0 && rank < 8);
+        assert!(file >= 0 && file < 8);
+        Position((file * 8 + rank) as usize)
+    }
+}
 
 impl From<usize> for Position {
     fn from(position: usize) -> Self {
@@ -68,6 +75,14 @@ impl Position {
     }
 }
 
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const FILES: &[u8; 8] = b"abcdefgh";
+        write!(f, "{}{}", FILES[self.file()] as char, self.rank() + 1)?;
+        Ok(())
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         let mut board = Board {
@@ -76,38 +91,38 @@ impl Board {
 
         {
             board[b"a1"] = (Color::White, PieceType::Rook).into();
-            board[b"a2"] = (Color::White, PieceType::Knight).into();
-            board[b"a3"] = (Color::White, PieceType::Bishop).into();
-            board[b"a4"] = (Color::White, PieceType::King).into();
-            board[b"a5"] = (Color::White, PieceType::Queen).into();
-            board[b"a6"] = (Color::White, PieceType::Bishop).into();
-            board[b"a7"] = (Color::White, PieceType::Knight).into();
-            board[b"a8"] = (Color::White, PieceType::Rook).into();
-            board[b"b1"] = (Color::White, PieceType::Pawn).into();
+            board[b"b1"] = (Color::White, PieceType::Knight).into();
+            board[b"c1"] = (Color::White, PieceType::Bishop).into();
+            board[b"d1"] = (Color::White, PieceType::King).into();
+            board[b"e1"] = (Color::White, PieceType::Queen).into();
+            board[b"f1"] = (Color::White, PieceType::Bishop).into();
+            board[b"g1"] = (Color::White, PieceType::Knight).into();
+            board[b"h1"] = (Color::White, PieceType::Rook).into();
+            board[b"a2"] = (Color::White, PieceType::Pawn).into();
             board[b"b2"] = (Color::White, PieceType::Pawn).into();
-            board[b"b3"] = (Color::White, PieceType::Pawn).into();
-            board[b"b4"] = (Color::White, PieceType::Pawn).into();
-            board[b"b5"] = (Color::White, PieceType::Pawn).into();
-            board[b"b6"] = (Color::White, PieceType::Pawn).into();
-            board[b"b7"] = (Color::White, PieceType::Pawn).into();
-            board[b"b8"] = (Color::White, PieceType::Pawn).into();
+            board[b"c2"] = (Color::White, PieceType::Pawn).into();
+            board[b"d2"] = (Color::White, PieceType::Pawn).into();
+            board[b"e2"] = (Color::White, PieceType::Pawn).into();
+            board[b"f2"] = (Color::White, PieceType::Pawn).into();
+            board[b"g2"] = (Color::White, PieceType::Pawn).into();
+            board[b"h2"] = (Color::White, PieceType::Pawn).into();
 
-            board[b"h1"] = (Color::Black, PieceType::Rook).into();
-            board[b"h2"] = (Color::Black, PieceType::Knight).into();
-            board[b"h3"] = (Color::Black, PieceType::Bishop).into();
-            board[b"h4"] = (Color::Black, PieceType::King).into();
-            board[b"h5"] = (Color::Black, PieceType::Queen).into();
-            board[b"h6"] = (Color::Black, PieceType::Bishop).into();
-            board[b"h7"] = (Color::Black, PieceType::Knight).into();
+            board[b"a8"] = (Color::Black, PieceType::Rook).into();
+            board[b"b8"] = (Color::Black, PieceType::Knight).into();
+            board[b"c8"] = (Color::Black, PieceType::Bishop).into();
+            board[b"d8"] = (Color::Black, PieceType::King).into();
+            board[b"e8"] = (Color::Black, PieceType::Queen).into();
+            board[b"f8"] = (Color::Black, PieceType::Bishop).into();
+            board[b"g8"] = (Color::Black, PieceType::Knight).into();
             board[b"h8"] = (Color::Black, PieceType::Rook).into();
-            board[b"g1"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g2"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g3"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g4"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g5"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g6"] = (Color::Black, PieceType::Pawn).into();
+            board[b"a7"] = (Color::Black, PieceType::Pawn).into();
+            board[b"b7"] = (Color::Black, PieceType::Pawn).into();
+            board[b"c7"] = (Color::Black, PieceType::Pawn).into();
+            board[b"d7"] = (Color::Black, PieceType::Pawn).into();
+            board[b"e7"] = (Color::Black, PieceType::Pawn).into();
+            board[b"f7"] = (Color::Black, PieceType::Pawn).into();
             board[b"g7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g8"] = (Color::Black, PieceType::Pawn).into();
+            board[b"h7"] = (Color::Black, PieceType::Pawn).into();
         }
 
         board
