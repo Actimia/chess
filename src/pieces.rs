@@ -1,4 +1,4 @@
-use std::{fmt::Display, num::NonZeroUsize, ops::Not};
+use std::{fmt::Display, ops::Not};
 
 use crate::board::{Board, Position};
 
@@ -35,6 +35,30 @@ pub struct Piece {
     pub typ: PieceType,
     pub most_recent_move: Option<usize>,
 }
+
+const ALL_DIRECTIONS: [(i32, i32); 8] = [
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, 1),
+    (1, -1),
+    (-1, -1),
+    (-1, 1),
+];
+
+const DIAGONALS: [(i32, i32); 4] = [(1, 1), (1, -1), (-1, -1), (-1, 1)];
+const STRAIGHTS: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+const KNIGHT_MOVES: [(i32, i32); 8] = [
+    (2, 1),
+    (-2, 1),
+    (1, 2),
+    (1, -2),
+    (-2, -1),
+    (2, -1),
+    (-1, 2),
+    (-1, -2),
+];
 
 impl Piece {
     pub fn get_moves(&self, board: &Board, position: &Position) -> Vec<Move> {
@@ -146,23 +170,98 @@ impl Piece {
     }
 
     fn moves_bishop(&self, board: &Board, position: &Position) -> Vec<Move> {
-        let mut moves = Vec::new();
-
-        position.iterate_offset(-1, -1);
-
-        moves
+        self.slide_helper(board, position, DIAGONALS.to_vec())
     }
     fn moves_knight(&self, board: &Board, position: &Position) -> Vec<Move> {
-        Vec::new()
+        KNIGHT_MOVES
+            .into_iter()
+            .map(|(f, r)| position.offset(f, r))
+            .flatten()
+            .filter(|pos| !board[pos].is_occupied_by(self.color))
+            .map(|to| Move {
+                from: *position,
+                to,
+                special: None,
+            })
+            .collect()
     }
     fn moves_rook(&self, board: &Board, position: &Position) -> Vec<Move> {
-        Vec::new()
+        self.slide_helper(board, position, STRAIGHTS.to_vec())
     }
     fn moves_queen(&self, board: &Board, position: &Position) -> Vec<Move> {
-        Vec::new()
+        self.slide_helper(board, position, ALL_DIRECTIONS.to_vec())
     }
     fn moves_king(&self, board: &Board, position: &Position) -> Vec<Move> {
-        Vec::new()
+        let mut moves: Vec<Move> = ALL_DIRECTIONS
+            .into_iter()
+            .map(|(f, r)| position.offset(f, r))
+            .flatten()
+            .filter(|pos| !board[pos].is_occupied_by(self.color))
+            .map(|to| Move {
+                from: *position,
+                to,
+                special: None,
+            })
+            .collect();
+
+        // castling
+        let directions: Vec<i32> = vec![-1, 1];
+        if self.most_recent_move.is_none() {
+            for dir in directions {
+                let mut can_castle: Option<Position> = None;
+                for pos in position.iterate_offset(dir, 0) {
+                    if let Square::Occupied(piece) = board[pos] {
+                        if !(piece.typ == PieceType::Rook && piece.most_recent_move.is_none()) {
+                            can_castle = Some(pos)
+                        }
+                    }
+                }
+                if let Some(rook) = can_castle {
+                    moves.push(Move {
+                        from: *position,
+                        to: position.offset(2 * dir, 0).unwrap(),
+                        special: Some(SpecialMove::Castling(
+                            rook,
+                            position.offset(dir, 0).unwrap(),
+                        )),
+                    })
+                }
+            }
+        }
+        moves
+    }
+
+    fn slide_helper(&self, board: &Board, from: &Position, offsets: Vec<(i32, i32)>) -> Vec<Move> {
+        let mut moves = Vec::new();
+        for (file, rank) in offsets {
+            let mut captured = false;
+            let new_moves: Vec<Move> = from
+                .iterate_offset(file, rank)
+                .into_iter()
+                .take_while(|pos| {
+                    // we need to return false on the iteration AFTER we actually capture
+                    if captured {
+                        return false;
+                    }
+                    match board[pos] {
+                        Square::Empty => true,
+                        Square::Occupied(piece) if piece.color != !self.color => {
+                            captured = true;
+                            true
+                        }
+                        _ => false,
+                    }
+                })
+                .map(|to| Move {
+                    from: *from,
+                    to,
+                    special: None,
+                })
+                .collect();
+            moves.extend(new_moves);
+        }
+
+        moves
     }
 }
 
@@ -232,9 +331,9 @@ impl Square {
 
 #[derive(Debug, Copy, Clone)]
 pub enum SpecialMove {
-    EnPassant(Position),
-    Promotion(PieceType),
-    Castling,
+    EnPassant(Position),          // position of the pawn that is captured
+    Promotion(PieceType),         // type of piece to promote to
+    Castling(Position, Position), // start and end position of the rook
 }
 
 #[derive(Debug, Copy, Clone)]

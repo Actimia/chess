@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::pieces::{Color, Move, PieceType, Square};
+use crate::pieces::{Color, Move, PieceType, SpecialMove, Square};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Position(usize);
@@ -89,13 +89,11 @@ impl Position {
 
     pub fn iterate_offset(&self, file_offset: i32, rank_offset: i32) -> Vec<Position> {
         // can be at most 7 steps in any direction
-        let x: Vec<Position> = (1..8)
+        (1..8)
             .into_iter()
             .map(|i| self.offset(i * file_offset, i * rank_offset))
             .flatten()
-            .collect();
-
-        vec![]
+            .collect()
     }
 }
 
@@ -182,8 +180,23 @@ impl Board {
             piece.most_recent_move = Some(res.ply);
             res[mv.to] = Square::Occupied(piece);
             res[mv.from] = Square::Empty;
-            res.ply += 1;
+
+            if let Some(special) = mv.special {
+                match special {
+                    SpecialMove::EnPassant(pos) => res[pos] = Square::Empty,
+                    SpecialMove::Promotion(typ) => piece.typ = typ,
+                    SpecialMove::Castling(rook_from, rook_to) => {
+                        if let Square::Occupied(mut rook) = res[rook_from].clone() {
+                            rook.most_recent_move = Some(res.ply);
+                            res[rook_to] = Square::Occupied(rook);
+                            res[rook_from] = Square::Empty
+                        }
+                    }
+                }
+            }
         }
+
+        res.ply += 1;
 
         res
     }
