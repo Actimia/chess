@@ -3,9 +3,9 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::pieces::{Color, Move, PieceType, SpecialMove, Square};
+use crate::pieces::{Color, Move, Piece, PieceType, SpecialMove, Square};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Position(usize);
 
 impl From<(usize, usize)> for Position {
@@ -165,6 +165,24 @@ impl Board {
         }
     }
 
+    pub fn get_pieces(&self, color: Color) -> Vec<(Position, Piece)> {
+        self.squares
+            .into_iter()
+            .enumerate()
+            .filter_map(|(pos, sq)| {
+                if let Square::Occupied(piece) = sq {
+                    if piece.color == color {
+                        Some((Position(pos), piece))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn get_moves<T>(&self, position: T) -> Option<Vec<Move>>
     where
         T: Into<Position>,
@@ -226,14 +244,14 @@ where
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const FILES: &[u8; 8] = b"abcdefgh";
         for file in 0..8 {
-            write!(f, "  {}", file + 1)?;
+            write!(f, "  {}", FILES[file] as char)?;
         }
         writeln!(f, "")?;
         for rank in (0..8).rev() {
             // print black on top
-            const RANKS: &[u8; 8] = b"abcdefgh";
-            write!(f, "{}", RANKS[rank] as char)?;
+            write!(f, "{}", rank + 1)?;
             for file in 0..8 {
                 let square = self[(rank, file)];
                 write!(f, "{}", square)?

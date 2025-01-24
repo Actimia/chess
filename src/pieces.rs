@@ -72,7 +72,7 @@ impl Piece {
         }
     }
 
-    fn moves_pawn(&self, board: &Board, position: &Position) -> Vec<Move> {
+    fn moves_pawn(&self, board: &Board, pawn: &Position) -> Vec<Move> {
         let up = match self.color {
             Color::Black => -1,
             Color::White => 1,
@@ -80,12 +80,12 @@ impl Piece {
         let mut moves = vec![];
 
         // normal move
-        if let Some(mv1) = position.offset(0, up) {
+        if let Some(mv1) = pawn.offset(0, up) {
             if board[mv1].is_empty() {
                 moves.push(mv1);
 
                 // starting move
-                if let Some(mv) = position.offset(0, 2 * up) {
+                if let Some(mv) = pawn.offset(0, 2 * up) {
                     if self.most_recent_move.is_none() && board[mv].is_empty() {
                         moves.push(mv);
                     }
@@ -94,12 +94,12 @@ impl Piece {
         }
 
         // captures
-        if let Some(mv) = position.offset(-1, up) {
+        if let Some(mv) = pawn.offset(-1, up) {
             if board[mv].is_occupied_by(!self.color) {
                 moves.push(mv);
             }
         }
-        if let Some(mv) = position.offset(1, up) {
+        if let Some(mv) = pawn.offset(1, up) {
             if board[mv].is_occupied_by(!self.color) {
                 moves.push(mv);
             }
@@ -116,7 +116,7 @@ impl Piece {
                 };
 
                 Move {
-                    from: *position,
+                    from: *pawn,
                     to,
                     special,
                 }
@@ -133,10 +133,10 @@ impl Piece {
             Color::Black => 3,
         };
         // if we are on the fifth or third rank...
-        if position.rank() == enpassant_rank {
+        if pawn.rank() == enpassant_rank {
             // and either square next to us...
             for file_offset in vec![-1, 1] {
-                if let Some(pos) = position.offset(file_offset, 0) {
+                if let Some(pos) = pawn.offset(file_offset, 0) {
                     // is occupied...
                     if let Square::Occupied(piece) = board[pos] {
                         // by a pawn of the opposite color...
@@ -147,12 +147,12 @@ impl Piece {
                                 .is_some_and(|ply| ply == board.ply - 1)
                             {
                                 // and the target square...
-                                if let Some(to) = position.offset(-1, up) {
+                                if let Some(to) = pawn.offset(-1, up) {
                                     // is empty...
                                     if board[to].is_empty() {
                                         // we can capture en passant
                                         let enpassant = Move {
-                                            from: *position,
+                                            from: *pawn,
                                             to,
                                             special: Some(SpecialMove::EnPassant(pos)),
                                         };
@@ -169,36 +169,36 @@ impl Piece {
         moves
     }
 
-    fn moves_bishop(&self, board: &Board, position: &Position) -> Vec<Move> {
-        self.slide_helper(board, position, DIAGONALS.to_vec())
+    fn moves_bishop(&self, board: &Board, bishop: &Position) -> Vec<Move> {
+        self.slide_helper(board, bishop, DIAGONALS.to_vec())
     }
-    fn moves_knight(&self, board: &Board, position: &Position) -> Vec<Move> {
+    fn moves_knight(&self, board: &Board, knight: &Position) -> Vec<Move> {
         KNIGHT_MOVES
             .into_iter()
-            .map(|(f, r)| position.offset(f, r))
+            .map(|(f, r)| knight.offset(f, r))
             .flatten()
             .filter(|pos| !board[pos].is_occupied_by(self.color))
             .map(|to| Move {
-                from: *position,
+                from: *knight,
                 to,
                 special: None,
             })
             .collect()
     }
-    fn moves_rook(&self, board: &Board, position: &Position) -> Vec<Move> {
-        self.slide_helper(board, position, STRAIGHTS.to_vec())
+    fn moves_rook(&self, board: &Board, rook: &Position) -> Vec<Move> {
+        self.slide_helper(board, rook, STRAIGHTS.to_vec())
     }
-    fn moves_queen(&self, board: &Board, position: &Position) -> Vec<Move> {
-        self.slide_helper(board, position, ALL_DIRECTIONS.to_vec())
+    fn moves_queen(&self, board: &Board, queen: &Position) -> Vec<Move> {
+        self.slide_helper(board, queen, ALL_DIRECTIONS.to_vec())
     }
-    fn moves_king(&self, board: &Board, position: &Position) -> Vec<Move> {
+    fn moves_king(&self, board: &Board, king: &Position) -> Vec<Move> {
         let mut moves: Vec<Move> = ALL_DIRECTIONS
             .into_iter()
-            .map(|(f, r)| position.offset(f, r))
+            .map(|(f, r)| king.offset(f, r))
             .flatten()
             .filter(|pos| !board[pos].is_occupied_by(self.color))
             .map(|to| Move {
-                from: *position,
+                from: *king,
                 to,
                 special: None,
             })
@@ -209,7 +209,7 @@ impl Piece {
         if self.most_recent_move.is_none() {
             for dir in directions {
                 let mut can_castle: Option<Position> = None;
-                for pos in position.iterate_offset(dir, 0) {
+                for pos in king.iterate_offset(dir, 0) {
                     if let Square::Occupied(piece) = board[pos] {
                         if !(piece.typ == PieceType::Rook && piece.most_recent_move.is_none()) {
                             can_castle = Some(pos)
@@ -218,12 +218,9 @@ impl Piece {
                 }
                 if let Some(rook) = can_castle {
                     moves.push(Move {
-                        from: *position,
-                        to: position.offset(2 * dir, 0).unwrap(),
-                        special: Some(SpecialMove::Castling(
-                            rook,
-                            position.offset(dir, 0).unwrap(),
-                        )),
+                        from: *king,
+                        to: king.offset(2 * dir, 0).unwrap(),
+                        special: Some(SpecialMove::Castling(rook, king.offset(dir, 0).unwrap())),
                     })
                 }
             }
@@ -245,7 +242,7 @@ impl Piece {
                     }
                     match board[pos] {
                         Square::Empty => true,
-                        Square::Occupied(piece) if piece.color != !self.color => {
+                        Square::Occupied(piece) if piece.color == !self.color => {
                             captured = true;
                             true
                         }
@@ -277,8 +274,8 @@ impl Display for Piece {
             (Color::Black, PieceType::King) => "♚",
             (Color::Black, PieceType::Queen) => "♛",
             (Color::Black, PieceType::Rook) => "♜",
-            (Color::Black, PieceType::Knight) => "♝",
-            (Color::Black, PieceType::Bishop) => "♞",
+            (Color::Black, PieceType::Knight) => "♞",
+            (Color::Black, PieceType::Bishop) => "♝",
             (Color::Black, PieceType::Pawn) => "♟",
         };
         write!(f, " {text} ")
