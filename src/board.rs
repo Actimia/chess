@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::pieces::{Color, Move, Piece, PieceType, SpecialMove, Square};
+use crate::pieces::{Color, Move, Piece, PieceType, SpecialMove};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Position(usize);
@@ -107,7 +107,7 @@ impl Display for Position {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Board {
-    squares: [Square; 64],
+    squares: [Option<Piece>; 64],
     pub ply: usize,
     pub last_pawn_move: usize,
 }
@@ -115,45 +115,53 @@ pub struct Board {
 impl Board {
     pub fn new() -> Self {
         let mut board = Board {
-            squares: [Square::Empty; 64],
+            squares: [None; 64],
             ply: 0,
             last_pawn_move: 0,
         };
 
-        {
-            board[b"a1"] = (Color::White, PieceType::Rook).into();
-            board[b"b1"] = (Color::White, PieceType::Knight).into();
-            board[b"c1"] = (Color::White, PieceType::Bishop).into();
-            board[b"d1"] = (Color::White, PieceType::King).into();
-            board[b"e1"] = (Color::White, PieceType::Queen).into();
-            board[b"f1"] = (Color::White, PieceType::Bishop).into();
-            board[b"g1"] = (Color::White, PieceType::Knight).into();
-            board[b"h1"] = (Color::White, PieceType::Rook).into();
-            board[b"a2"] = (Color::White, PieceType::Pawn).into();
-            board[b"b2"] = (Color::White, PieceType::Pawn).into();
-            board[b"c2"] = (Color::White, PieceType::Pawn).into();
-            board[b"d2"] = (Color::White, PieceType::Pawn).into();
-            board[b"e2"] = (Color::White, PieceType::Pawn).into();
-            board[b"f2"] = (Color::White, PieceType::Pawn).into();
-            board[b"g2"] = (Color::White, PieceType::Pawn).into();
-            board[b"h2"] = (Color::White, PieceType::Pawn).into();
+        fn sq(color: Color, typ: PieceType) -> Option<Piece> {
+            Some(Piece {
+                typ,
+                color,
+                most_recent_move: None,
+            })
+        }
 
-            board[b"a8"] = (Color::Black, PieceType::Rook).into();
-            board[b"b8"] = (Color::Black, PieceType::Knight).into();
-            board[b"c8"] = (Color::Black, PieceType::Bishop).into();
-            board[b"d8"] = (Color::Black, PieceType::King).into();
-            board[b"e8"] = (Color::Black, PieceType::Queen).into();
-            board[b"f8"] = (Color::Black, PieceType::Bishop).into();
-            board[b"g8"] = (Color::Black, PieceType::Knight).into();
-            board[b"h8"] = (Color::Black, PieceType::Rook).into();
-            board[b"a7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"b7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"c7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"d7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"e7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"f7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"g7"] = (Color::Black, PieceType::Pawn).into();
-            board[b"h7"] = (Color::Black, PieceType::Pawn).into();
+        {
+            board[b"a1"] = sq(Color::White, PieceType::Rook);
+            board[b"b1"] = sq(Color::White, PieceType::Knight);
+            board[b"c1"] = sq(Color::White, PieceType::Bishop);
+            board[b"d1"] = sq(Color::White, PieceType::King);
+            board[b"e1"] = sq(Color::White, PieceType::Queen);
+            board[b"f1"] = sq(Color::White, PieceType::Bishop);
+            board[b"g1"] = sq(Color::White, PieceType::Knight);
+            board[b"h1"] = sq(Color::White, PieceType::Rook);
+            board[b"a2"] = sq(Color::White, PieceType::Pawn);
+            board[b"b2"] = sq(Color::White, PieceType::Pawn);
+            board[b"c2"] = sq(Color::White, PieceType::Pawn);
+            board[b"d2"] = sq(Color::White, PieceType::Pawn);
+            board[b"e2"] = sq(Color::White, PieceType::Pawn);
+            board[b"f2"] = sq(Color::White, PieceType::Pawn);
+            board[b"g2"] = sq(Color::White, PieceType::Pawn);
+            board[b"h2"] = sq(Color::White, PieceType::Pawn);
+
+            board[b"a8"] = sq(Color::Black, PieceType::Rook);
+            board[b"b8"] = sq(Color::Black, PieceType::Knight);
+            board[b"c8"] = sq(Color::Black, PieceType::Bishop);
+            board[b"d8"] = sq(Color::Black, PieceType::King);
+            board[b"e8"] = sq(Color::Black, PieceType::Queen);
+            board[b"f8"] = sq(Color::Black, PieceType::Bishop);
+            board[b"g8"] = sq(Color::Black, PieceType::Knight);
+            board[b"h8"] = sq(Color::Black, PieceType::Rook);
+            board[b"a7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"b7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"c7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"d7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"e7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"f7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"g7"] = sq(Color::Black, PieceType::Pawn);
+            board[b"h7"] = sq(Color::Black, PieceType::Pawn);
         }
 
         board
@@ -171,12 +179,34 @@ impl Board {
         }
     }
 
+    pub fn get_moves(&self, position: &Position) -> Option<Vec<Move>> {
+        self[position].map(|p| p.get_moves(&self, position))
+    }
+
+    pub fn is_occupied_by(
+        &self,
+        pos: Position,
+        color: Option<Color>,
+        typ: Option<PieceType>,
+    ) -> bool {
+        self[pos]
+            .filter(|p| match color {
+                Some(color) => p.color == color,
+                None => true,
+            })
+            .filter(|p| match typ {
+                Some(typ) => p.typ == typ,
+                None => true,
+            })
+            .is_some()
+    }
+
     pub fn get_pieces(&self, color: Color) -> Vec<(Position, Piece)> {
         self.squares
             .into_iter()
             .enumerate()
             .filter_map(|(pos, sq)| {
-                if let Square::Occupied(piece) = sq {
+                if let Some(piece) = sq {
                     if piece.color == color {
                         Some((Position(pos), piece))
                     } else {
@@ -189,21 +219,13 @@ impl Board {
             .collect()
     }
 
-    pub fn get_moves<T>(&self, position: T) -> Option<Vec<Move>>
-    where
-        T: Into<Position>,
-    {
-        let pos = position.into();
-        self[pos].possible_moves(self, &pos)
-    }
-
     pub fn apply(&self, mv: &Move) -> Board {
         let mut res = self.clone();
 
-        if let Square::Occupied(mut piece) = res[mv.from].clone() {
+        if let Some(mut piece) = res[mv.from].clone() {
             piece.most_recent_move = Some(res.ply);
-            res[mv.to] = Square::Occupied(piece);
-            res[mv.from] = Square::Empty;
+            res[mv.to] = Some(piece);
+            res[mv.from] = None;
 
             if piece.typ == PieceType::Pawn {
                 // Update the 50-move counter with the current ply
@@ -212,13 +234,13 @@ impl Board {
 
             if let Some(special) = mv.special {
                 match special {
-                    SpecialMove::EnPassant(pos) => res[pos] = Square::Empty,
+                    SpecialMove::EnPassant(pos) => res[pos] = None,
                     SpecialMove::Promotion(typ) => piece.typ = typ,
                     SpecialMove::Castling(rook_from, rook_to) => {
-                        if let Square::Occupied(mut rook) = res[rook_from].clone() {
+                        if let Some(mut rook) = res[rook_from].clone() {
                             rook.most_recent_move = Some(res.ply);
-                            res[rook_to] = Square::Occupied(rook);
-                            res[rook_from] = Square::Empty
+                            res[rook_to] = Some(rook);
+                            res[rook_from] = None
                         }
                     }
                 }
@@ -235,7 +257,7 @@ impl<T> Index<T> for Board
 where
     T: Into<Position>,
 {
-    type Output = Square;
+    type Output = Option<Piece>;
 
     fn index<'a>(&'a self, position: T) -> &'a Self::Output {
         let position = position.into();
@@ -265,7 +287,10 @@ impl Display for Board {
             write!(f, "{}", rank + 1)?;
             for file in 0..8 {
                 let square = self[(rank, file)];
-                write!(f, "{}", square)?
+                match square {
+                    Some(piece) => write!(f, "{}", piece)?,
+                    None => write!(f, "   ")?,
+                }
             }
             writeln!(f, "")?
         }

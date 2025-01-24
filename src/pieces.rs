@@ -81,12 +81,12 @@ impl Piece {
 
         // normal move
         if let Some(mv1) = pawn.offset(0, up) {
-            if board[mv1].is_empty() {
+            if board[mv1].is_none() {
                 moves.push(mv1);
 
                 // starting move
                 if let Some(mv) = pawn.offset(0, 2 * up) {
-                    if self.most_recent_move.is_none() && board[mv].is_empty() {
+                    if self.most_recent_move.is_none() && board[mv].is_none() {
                         moves.push(mv);
                     }
                 }
@@ -95,12 +95,12 @@ impl Piece {
 
         // captures
         if let Some(mv) = pawn.offset(-1, up) {
-            if board[mv].is_occupied_by(!self.color) {
+            if board[mv].is_some_and(|p| p.color == !self.color) {
                 moves.push(mv);
             }
         }
         if let Some(mv) = pawn.offset(1, up) {
-            if board[mv].is_occupied_by(!self.color) {
+            if board[mv].is_some_and(|p| p.color == !self.color) {
                 moves.push(mv);
             }
         }
@@ -134,7 +134,7 @@ impl Piece {
             for file_offset in vec![-1, 1] {
                 if let Some(pos) = pawn.offset(file_offset, 0) {
                     // is occupied...
-                    if let Square::Occupied(piece) = board[pos] {
+                    if let Some(piece) = board[pos] {
                         // by a pawn of the opposite color...
                         if piece.color == !self.color && piece.typ == PieceType::Pawn {
                             // who just moved...
@@ -145,7 +145,7 @@ impl Piece {
                                 // and the target square...
                                 if let Some(to) = pawn.offset(-1, up) {
                                     // is empty...
-                                    if board[to].is_empty() {
+                                    if board[to].is_none() {
                                         // we can capture en passant
                                         let enpassant = Move {
                                             from: *pawn,
@@ -173,7 +173,7 @@ impl Piece {
             .into_iter()
             .map(|(f, r)| knight.offset(f, r))
             .flatten()
-            .filter(|pos| !board[pos].is_occupied_by(self.color))
+            .filter(|pos| board[pos].is_some_and(|p| p.color != self.color))
             .map(|to| Move {
                 from: *knight,
                 to,
@@ -192,7 +192,7 @@ impl Piece {
             .into_iter()
             .map(|(f, r)| king.offset(f, r))
             .flatten()
-            .filter(|pos| !board[pos].is_occupied_by(self.color))
+            .filter(|pos| board[pos].is_some_and(|p| p.color != self.color))
             .map(|to| Move {
                 from: *king,
                 to,
@@ -206,7 +206,7 @@ impl Piece {
             for dir in directions {
                 let mut can_castle: Option<Position> = None; // rooks position
                 for pos in king.iterate_offset(dir, 0) {
-                    if let Square::Occupied(piece) = board[pos] {
+                    if let Some(piece) = board[pos] {
                         if piece.typ == PieceType::Rook && piece.most_recent_move.is_none() {
                             can_castle = Some(pos)
                         } else {
@@ -239,8 +239,8 @@ impl Piece {
                         return false;
                     }
                     match board[pos] {
-                        Square::Empty => true,
-                        Square::Occupied(piece) if piece.color == !self.color => {
+                        None => true,
+                        Some(piece) if piece.color == !self.color => {
                             captured = true;
                             true
                         }
@@ -277,50 +277,6 @@ impl Display for Piece {
             (Color::Black, PieceType::Pawn) => "♟",
         };
         write!(f, " {text} ")
-    }
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Square {
-    Empty,
-    Occupied(Piece),
-}
-
-impl From<(Color, PieceType)> for Square {
-    fn from((color, typ): (Color, PieceType)) -> Self {
-        Self::Occupied(Piece {
-            color,
-            typ,
-            most_recent_move: None,
-        })
-    }
-}
-
-impl Display for Square {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Empty => write!(f, "   "),
-            Self::Occupied(piece) => write!(f, "{}", piece),
-        }
-    }
-}
-
-impl Square {
-    pub fn possible_moves(&self, board: &Board, position: &Position) -> Option<Vec<Move>> {
-        match self {
-            Self::Empty => None,
-            Self::Occupied(piece) => Some(piece.get_moves(board, position)),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Square::Empty)
-    }
-    pub fn is_occupied_by(&self, col: Color) -> bool {
-        match self {
-            Square::Occupied(piece) if piece.color == col => true,
-            _ => false,
-        }
     }
 }
 

@@ -64,12 +64,12 @@ impl Player for TerminalPlayer {
         loop {
             let from = self.read_position("What piece to move?");
 
-            if !board[from].is_occupied_by(color) {
+            if !board.is_occupied_by(from, Some(color), None) {
                 println!("That is not one of your pieces.");
                 continue;
             }
 
-            if let Some(moves) = board.get_moves(from) {
+            if let Some(moves) = board.get_moves(&from) {
                 if moves.is_empty() {
                     println!("That piece has no moves.");
                     continue;
