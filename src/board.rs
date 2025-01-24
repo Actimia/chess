@@ -110,6 +110,7 @@ pub struct Board {
     squares: [Option<Piece>; 64],
     pub ply: usize,
     pub last_pawn_move: usize,
+    pub last_move: Option<Move>,
 }
 
 impl Board {
@@ -118,6 +119,7 @@ impl Board {
             squares: [None; 64],
             ply: 0,
             last_pawn_move: 0,
+            last_move: None,
         };
 
         fn sq(color: Color, typ: PieceType) -> Option<Piece> {
@@ -221,6 +223,7 @@ impl Board {
 
     pub fn apply(&self, mv: &Move) -> Board {
         let mut res = self.clone();
+        res.last_move = Some(*mv);
 
         if let Some(mut piece) = res[mv.from].clone() {
             piece.most_recent_move = Some(res.ply);
@@ -233,7 +236,6 @@ impl Board {
             }
 
             if let Some(special) = mv.special {
-                println!("Special: {:?}, {}", special, mv);
                 match special {
                     SpecialMove::EnPassant(pos) => res[pos] = None,
                     SpecialMove::Promotion(typ) => piece.typ = typ,

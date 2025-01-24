@@ -280,14 +280,14 @@ impl Display for Piece {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SpecialMove {
     EnPassant(Position),          // position of the pawn that is captured
     Promotion(PieceType),         // type of piece to promote to
     Castling(Position, Position), // start and end position of the rook
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Move {
     pub from: Position,
     pub to: Position,

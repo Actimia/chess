@@ -1,166 +1,16 @@
-use std::{fmt::Display, io};
-
-use rand::Rng;
+use std::fmt::Display;
 
 use crate::{
-    board::{Board, Position},
+    board::Board,
     pieces::{Color, Move, PieceType},
+    players::Player,
 };
-
-pub trait Player {
-    fn make_move(&self, board: &Board, color: Color) -> Move;
-}
-
-// TerminalPlayer asks stdin for which moves to make.
-pub struct TerminalPlayer;
-
-impl TerminalPlayer {
-    fn read_position(&self, prompt: &str) -> Position {
-        loop {
-            println!("{prompt}");
-            let mut input = String::new();
-            let _ = io::stdin().read_line(&mut input);
-
-            if input.len() < 3 {
-                continue;
-            }
-
-            let rank = input.remove(1) as u8;
-            let file = input.remove(0) as u8;
-
-            let rank = match rank {
-                b'1' => 0,
-                b'2' => 8,
-                b'3' => 16,
-                b'4' => 24,
-                b'5' => 32,
-                b'6' => 40,
-                b'7' => 48,
-                b'8' => 56,
-                _ => continue,
-            };
-
-            let file = match file {
-                b'a' => 0,
-                b'b' => 1,
-                b'c' => 2,
-                b'd' => 3,
-                b'e' => 4,
-                b'f' => 5,
-                b'g' => 6,
-                b'h' => 7,
-                _ => continue,
-            };
-
-            return ((rank + file) as usize).into();
-        }
-    }
-}
-
-impl Player for TerminalPlayer {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        loop {
-            let from = self.read_position("What piece to move?");
-
-            if !board.is_occupied_by(from, Some(color), None) {
-                println!("That is not one of your pieces.");
-                continue;
-            }
-
-            if let Some(moves) = board.get_moves(&from) {
-                if moves.is_empty() {
-                    println!("That piece has no moves.");
-                    continue;
-                }
-                for mv in moves.iter() {
-                    println!("{}", mv);
-                }
-                let to = self.read_position("Where to move the piece?");
-
-                match moves.iter().find(|mv| mv.to == to) {
-                    Some(mv) => return *mv,
-                    None => continue,
-                }
-            }
-        }
-    }
-}
-
-// RandomPlayer makes a random legal move
-pub struct RandomPlayer;
-
-impl Player for RandomPlayer {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        let pieces = board.get_pieces(color);
-        let moves: Vec<Move> = pieces
-            .iter()
-            .flat_map(|(pos, _)| board.get_moves(pos))
-            .flatten()
-            .collect();
-
-        let random_index = rand::thread_rng().gen_range(0..moves.len());
-        return moves[random_index];
-    }
-}
-
-pub struct PrintBoard<P: Player> {
-    player: P,
-}
-
-impl<P: Player> Player for PrintBoard<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        println!("{}", board);
-        println!();
-        self.player.make_move(board, color)
-    }
-}
-
-impl<P: Player> PrintBoard<P> {
-    pub fn wrap(player: P) -> Self {
-        Self { player }
-    }
-}
-
-pub struct PrintMoves<P: Player> {
-    player: P,
-}
-
-impl<P: Player> Player for PrintMoves<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        let mv = self.player.make_move(board, color);
-        println!("{}", mv);
-        mv
-    }
-}
-
-impl<P: Player> PrintMoves<P> {
-    pub fn wrap(player: P) -> Self {
-        Self { player }
-    }
-}
-
-pub struct ManualStep<P: Player> {
-    player: P,
-}
-
-impl<P: Player> Player for ManualStep<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        let mut input = String::new();
-        let _ = io::stdin().read_line(&mut input);
-        self.player.make_move(board, color)
-    }
-}
-
-impl<P: Player> ManualStep<P> {
-    pub fn wrap(player: P) -> Self {
-        Self { player }
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum GameResult {
     WhiteWin,
-    Draw,
+    DrawByRepetition,
+    DrawBy50MoveRule,
     BlackWin,
 }
 
@@ -168,7 +18,8 @@ impl Display for GameResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GameResult::WhiteWin => write!(f, "White won")?,
-            GameResult::Draw => write!(f, "Draw")?,
+            GameResult::DrawByRepetition => write!(f, "Draw by repetition")?,
+            GameResult::DrawBy50MoveRule => write!(f, "Draw by 50-move rule")?,
             GameResult::BlackWin => write!(f, "Black won")?,
         }
         Ok(())
@@ -213,10 +64,10 @@ impl<White: Player, Black: Player> Game<White, Black> {
             >= 2
         {
             // if we have seen the current gamestate twice before, it is a draw
-            Some(GameResult::Draw)
+            Some(GameResult::DrawByRepetition)
         } else if self.board.ply - self.board.last_pawn_move >= 50 {
             // 50 moves since last pawn move, it is a draw
-            Some(GameResult::Draw)
+            Some(GameResult::DrawBy50MoveRule)
         } else {
             let black = self.board.get_pieces(Color::Black);
             if let None = black.iter().find(|(_, piece)| piece.typ == PieceType::King) {
