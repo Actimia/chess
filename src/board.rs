@@ -105,10 +105,11 @@ impl Display for Position {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Board {
     squares: [Square; 64],
     pub ply: usize,
+    pub last_pawn_move: usize,
 }
 
 impl Board {
@@ -116,6 +117,7 @@ impl Board {
         let mut board = Board {
             squares: [Square::Empty; 64],
             ply: 0,
+            last_pawn_move: 0,
         };
 
         {
@@ -156,6 +158,10 @@ impl Board {
 
         board
     }
+
+    /* pub fn from_pgn(pgn: &str) -> Self {
+        todo!()
+    } */
 
     pub fn get_turn(&self) -> Color {
         if self.ply % 2 == 0 {
@@ -198,6 +204,11 @@ impl Board {
             piece.most_recent_move = Some(res.ply);
             res[mv.to] = Square::Occupied(piece);
             res[mv.from] = Square::Empty;
+
+            if piece.typ == PieceType::Pawn {
+                // Update the 50-move counter with the current ply
+                res.last_pawn_move = self.ply
+            }
 
             if let Some(special) = mv.special {
                 match special {

@@ -29,7 +29,7 @@ pub enum PieceType {
     King,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Piece {
     pub color: Color,
     pub typ: PieceType,
@@ -121,10 +121,6 @@ impl Piece {
                     special,
                 }
             })
-            .filter(|mv| match board[mv.to] {
-                Square::Empty => true,
-                Square::Occupied(_) => false,
-            })
             .collect();
 
         // en passant
@@ -208,11 +204,13 @@ impl Piece {
         let directions: Vec<i32> = vec![-1, 1];
         if self.most_recent_move.is_none() {
             for dir in directions {
-                let mut can_castle: Option<Position> = None;
+                let mut can_castle: Option<Position> = None; // rooks position
                 for pos in king.iterate_offset(dir, 0) {
                     if let Square::Occupied(piece) = board[pos] {
-                        if !(piece.typ == PieceType::Rook && piece.most_recent_move.is_none()) {
+                        if piece.typ == PieceType::Rook && piece.most_recent_move.is_none() {
                             can_castle = Some(pos)
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -282,7 +280,7 @@ impl Display for Piece {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Square {
     Empty,
     Occupied(Piece),

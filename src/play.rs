@@ -1,15 +1,18 @@
-use std::io;
+use std::{fmt::Display, io};
+
+use rand::Rng;
 
 use crate::{
     board::{Board, Position},
-    pieces::{Color, Move},
+    pieces::{Color, Move, PieceType},
 };
 
 pub trait Player {
     fn make_move(&self, board: &Board, color: Color) -> Move;
 }
 
-pub struct TerminalPlayer {}
+// TerminalPlayer asks stdin for which moves to make.
+pub struct TerminalPlayer;
 
 impl TerminalPlayer {
     fn read_position(&self, prompt: &str) -> Position {
@@ -85,7 +88,8 @@ impl Player for TerminalPlayer {
     }
 }
 
-pub struct RandomPlayer {}
+// RandomPlayer makes a random legal move
+pub struct RandomPlayer;
 
 impl Player for RandomPlayer {
     fn make_move(&self, board: &Board, color: Color) -> Move {
@@ -96,8 +100,26 @@ impl Player for RandomPlayer {
             .flat_map(|(pos, _)| board.get_moves(pos).unwrap())
             .collect();
 
-        let randomish_index = (31 * moves.len() + 17) % moves.len();
-        return moves[randomish_index];
+        let random_index = rand::thread_rng().gen_range(0..moves.len());
+        return moves[random_index];
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum GameResult {
+    WhiteWin,
+    Draw,
+    BlackWin,
+}
+
+impl Display for GameResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GameResult::WhiteWin => write!(f, "White win")?,
+            GameResult::Draw => write!(f, "Draw")?,
+            GameResult::BlackWin => write!(f, "Black win")?,
+        }
+        Ok(())
     }
 }
 
@@ -107,30 +129,70 @@ where
     B: Player,
 {
     board: Board,
-    // previous_states: Vec<Board>,
+    previous_states: Vec<Board>,
     white: W,
     black: B,
 }
 
 impl<White: Player, Black: Player> Game<White, Black> {
     pub fn new(white: White, black: Black) -> Game<White, Black> {
+        println!("{}", std::mem::size_of::<Board>());
         Game {
             board: Board::new(),
-            // previous_states: Vec::new(),
+            previous_states: Vec::new(),
             white,
             black,
         }
     }
 
+    fn get_next_move(&self) -> Move {
+        match self.board.get_turn() {
+            Color::White => self.white.make_move(&self.board, Color::White),
+            Color::Black => self.black.make_move(&self.board, Color::Black),
+        }
+    }
+
+    fn is_gameover(&self) -> Option<GameResult> {
+        if self
+            .previous_states
+            .iter()
+            .filter(|prev| **prev == self.board)
+            .count()
+            >= 2
+        {
+            // if we have seen the current gamestate twice before, it is a draw
+            Some(GameResult::Draw)
+        } else if self.board.ply - self.board.last_pawn_move >= 50 {
+            // 50 moves since last pawn move, it is a draw
+            Some(GameResult::Draw)
+        } else {
+            let black = self.board.get_pieces(Color::Black);
+            if let None = black.iter().find(|(_, piece)| piece.typ == PieceType::King) {
+                // The black king has been captured, white wins
+                return Some(GameResult::WhiteWin);
+            }
+            let white = self.board.get_pieces(Color::White);
+            if let None = white.iter().find(|(_, piece)| piece.typ == PieceType::King) {
+                // The white king has been captured, black wins
+                return Some(GameResult::BlackWin);
+            }
+
+            // the game is still ongoing
+            None
+        }
+    }
+
     pub fn start(&mut self) {
         loop {
-            let white_move = self.white.make_move(&self.board, Color::White);
-            self.board = self.board.apply(&white_move);
+            let mv = self.get_next_move();
+            self.previous_states.push(self.board);
+            self.board = self.board.apply(&mv);
             // check for gameover
 
-            let black_move = self.black.make_move(&self.board, Color::Black);
-            self.board = self.board.apply(&black_move);
-            // check for gameover
+            if let Some(result) = self.is_gameover() {
+                println!("Game over: {}", result);
+                break;
+            }
         }
     }
 }
