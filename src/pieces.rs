@@ -108,7 +108,7 @@ impl Piece {
         let mut moves: Vec<Move> = moves
             .into_iter()
             .map(|to| {
-                let special = if to.rank() == 8 || to.rank() == 1 {
+                let special = if to.rank() == 7 || to.rank() == 0 {
                     // TODO: other promotions
                     Some(SpecialMove::Promotion(PieceType::Queen))
                 } else {
@@ -125,8 +125,8 @@ impl Piece {
 
         // en passant
         let enpassant_rank = match self.color {
-            Color::White => 5,
-            Color::Black => 3,
+            Color::White => 4, // 0-indexed
+            Color::Black => 2,
         };
         // if we are on the fifth or third rank...
         if pawn.rank() == enpassant_rank {
@@ -173,7 +173,7 @@ impl Piece {
             .into_iter()
             .map(|(f, r)| knight.offset(f, r))
             .flatten()
-            .filter(|pos| board[pos].is_some_and(|p| p.color != self.color))
+            .filter(|pos| !board[pos].is_some_and(|p| p.color == self.color))
             .map(|to| Move {
                 from: *knight,
                 to,
@@ -192,7 +192,7 @@ impl Piece {
             .into_iter()
             .map(|(f, r)| king.offset(f, r))
             .flatten()
-            .filter(|pos| board[pos].is_some_and(|p| p.color != self.color))
+            .filter(|pos| !board[pos].is_some_and(|p| p.color == self.color))
             .map(|to| Move {
                 from: *king,
                 to,

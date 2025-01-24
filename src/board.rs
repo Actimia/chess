@@ -233,6 +233,7 @@ impl Board {
             }
 
             if let Some(special) = mv.special {
+                println!("Special: {:?}, {}", special, mv);
                 match special {
                     SpecialMove::EnPassant(pos) => res[pos] = None,
                     SpecialMove::Promotion(typ) => piece.typ = typ,

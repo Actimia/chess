@@ -3,9 +3,7 @@
 A simple chess engine written in rust.
 
 ## Todo
- - Check for game over:
-   - Checkmate/king has been captured
-   - Draw by repetition/50 move rule
+ - Proper checkmate instead of king capture to end the game
  - Import boardstate from PGN
  - Display move with proper notation
  - Input move with proper notation

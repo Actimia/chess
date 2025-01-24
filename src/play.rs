@@ -59,8 +59,6 @@ impl TerminalPlayer {
 
 impl Player for TerminalPlayer {
     fn make_move(&self, board: &Board, color: Color) -> Move {
-        println!("{}", board);
-        println!();
         loop {
             let from = self.read_position("What piece to move?");
 
@@ -94,14 +92,68 @@ pub struct RandomPlayer;
 impl Player for RandomPlayer {
     fn make_move(&self, board: &Board, color: Color) -> Move {
         let pieces = board.get_pieces(color);
-
         let moves: Vec<Move> = pieces
             .iter()
-            .flat_map(|(pos, _)| board.get_moves(pos).unwrap())
+            .flat_map(|(pos, _)| board.get_moves(pos))
+            .flatten()
             .collect();
 
         let random_index = rand::thread_rng().gen_range(0..moves.len());
         return moves[random_index];
+    }
+}
+
+pub struct PrintBoard<P: Player> {
+    player: P,
+}
+
+impl<P: Player> Player for PrintBoard<P> {
+    fn make_move(&self, board: &Board, color: Color) -> Move {
+        println!("{}", board);
+        println!();
+        self.player.make_move(board, color)
+    }
+}
+
+impl<P: Player> PrintBoard<P> {
+    pub fn wrap(player: P) -> Self {
+        Self { player }
+    }
+}
+
+pub struct PrintMoves<P: Player> {
+    player: P,
+}
+
+impl<P: Player> Player for PrintMoves<P> {
+    fn make_move(&self, board: &Board, color: Color) -> Move {
+        let mv = self.player.make_move(board, color);
+        println!("{}", mv);
+        mv
+    }
+}
+
+impl<P: Player> PrintMoves<P> {
+    pub fn wrap(player: P) -> Self {
+        Self { player }
+    }
+}
+
+pub struct ManualStep<P: Player> {
+    player: P,
+}
+
+impl<P: Player> Player for ManualStep<P> {
+    fn make_move(&self, board: &Board, color: Color) -> Move {
+        let mut input = String::new();
+        let _ = io::stdin().read_line(&mut input);
+        self.player.make_move(board, color)
+    }
+}
+
+impl<P: Player> ManualStep<P> {
+    pub fn wrap(player: P) -> Self {
+        Self { player }
     }
 }
 
@@ -115,9 +167,9 @@ pub enum GameResult {
 impl Display for GameResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GameResult::WhiteWin => write!(f, "White win")?,
+            GameResult::WhiteWin => write!(f, "White won")?,
             GameResult::Draw => write!(f, "Draw")?,
-            GameResult::BlackWin => write!(f, "Black win")?,
+            GameResult::BlackWin => write!(f, "Black won")?,
         }
         Ok(())
     }
@@ -187,10 +239,10 @@ impl<White: Player, Black: Player> Game<White, Black> {
             let mv = self.get_next_move();
             self.previous_states.push(self.board);
             self.board = self.board.apply(&mv);
-            // check for gameover
 
             if let Some(result) = self.is_gameover() {
-                println!("Game over: {}", result);
+                println!("{}", self.board);
+                println!("Game over: {} after {} moves", result, self.board.ply / 2);
                 break;
             }
         }
