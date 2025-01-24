@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, num::NonZeroUsize, ops::Not};
 
 use crate::board::{Board, Position};
 
@@ -6,6 +6,17 @@ use crate::board::{Board, Position};
 pub enum Color {
     White,
     Black,
+}
+
+impl Not for Color {
+    type Output = Color;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -22,7 +33,7 @@ pub enum PieceType {
 pub struct Piece {
     pub color: Color,
     pub typ: PieceType,
-    pub has_moved: bool,
+    pub most_recent_move: Option<usize>,
 }
 
 impl Piece {
@@ -42,18 +53,104 @@ impl Piece {
             Color::Black => -1,
             Color::White => 1,
         };
-        let mut moves = vec![(up, 0)];
-        if !self.has_moved {
-            moves.push((2 * up, 0));
+        let mut moves = vec![];
+
+        // normal move
+        if let Some(mv1) = position.offset(0, up) {
+            if board[mv1].is_empty() {
+                moves.push(mv1);
+
+                // starting move
+                if let Some(mv) = position.offset(0, 2 * up) {
+                    if self.most_recent_move.is_none() && board[mv].is_empty() {
+                        moves.push(mv);
+                    }
+                }
+            }
+        }
+
+        // captures
+        if let Some(mv) = position.offset(-1, up) {
+            if board[mv].is_occupied_by(!self.color) {
+                moves.push(mv);
+            }
+        }
+        if let Some(mv) = position.offset(1, up) {
+            if board[mv].is_occupied_by(!self.color) {
+                moves.push(mv);
+            }
+        }
+
+        let mut moves: Vec<Move> = moves
+            .into_iter()
+            .map(|to| {
+                let special = if to.rank() == 8 || to.rank() == 1 {
+                    // TODO: other promotions
+                    Some(SpecialMove::Promotion(PieceType::Queen))
+                } else {
+                    None
+                };
+
+                Move {
+                    from: *position,
+                    to,
+                    special,
+                }
+            })
+            .filter(|mv| match board[mv.to] {
+                Square::Empty => true,
+                Square::Occupied(_) => false,
+            })
+            .collect();
+
+        // en passant
+        let enpassant_rank = match self.color {
+            Color::White => 5,
+            Color::Black => 3,
+        };
+        // if we are on the fifth or third rank...
+        if position.rank() == enpassant_rank {
+            // and either square next to us...
+            for file_offset in vec![-1, 1] {
+                if let Some(pos) = position.offset(file_offset, 0) {
+                    // is occupied...
+                    if let Square::Occupied(piece) = board[pos] {
+                        // by a pawn of the opposite color...
+                        if piece.color == !self.color && piece.typ == PieceType::Pawn {
+                            // who just moved...
+                            if piece
+                                .most_recent_move
+                                .is_some_and(|ply| ply == board.ply - 1)
+                            {
+                                // and the target square...
+                                if let Some(to) = position.offset(-1, up) {
+                                    // is empty...
+                                    if board[to].is_empty() {
+                                        // we can capture en passant
+                                        let enpassant = Move {
+                                            from: *position,
+                                            to,
+                                            special: Some(SpecialMove::EnPassant(pos)),
+                                        };
+                                        moves.push(enpassant);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         moves
-            .into_iter()
-            .map(|offset| Move::from_offset(*position, offset))
-            .collect()
     }
+
     fn moves_bishop(&self, board: &Board, position: &Position) -> Vec<Move> {
-        Vec::new()
+        let mut moves = Vec::new();
+
+        position.iterate_offset(-1, -1);
+
+        moves
     }
     fn moves_knight(&self, board: &Board, position: &Position) -> Vec<Move> {
         Vec::new()
@@ -100,7 +197,7 @@ impl From<(Color, PieceType)> for Square {
         Self::Occupied(Piece {
             color,
             typ,
-            has_moved: false,
+            most_recent_move: None,
         })
     }
 }
@@ -108,7 +205,7 @@ impl From<(Color, PieceType)> for Square {
 impl Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Empty => write!(f, " "),
+            Self::Empty => write!(f, "   "),
             Self::Occupied(piece) => write!(f, "{}", piece),
         }
     }
@@ -121,33 +218,33 @@ impl Square {
             Self::Occupied(piece) => Some(piece.get_moves(board, position)),
         }
     }
-}
 
-pub enum SpecialMove {
-    EnPassant, // possibly not needed
-    Promotion(PieceType),
-    Castling,
-}
-pub struct Move {
-    from: Position,
-    to: Position,
-    special: Option<SpecialMove>,
-}
-
-impl Move {
-    pub fn from_offset(from: Position, (rank_offset, file_offset): (i32, i32)) -> Move {
-        let to: Position = (
-            from.rank() as i32 + rank_offset,
-            from.file() as i32 + file_offset,
-        )
-            .into();
-        Move {
-            from,
-            to,
-            special: None,
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Square::Empty)
+    }
+    pub fn is_occupied_by(&self, col: Color) -> bool {
+        match self {
+            Square::Occupied(piece) if piece.color == col => true,
+            _ => false,
         }
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum SpecialMove {
+    EnPassant(Position),
+    Promotion(PieceType),
+    Castling,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Move {
+    pub from: Position,
+    pub to: Position,
+    pub special: Option<SpecialMove>,
+}
+
+impl Move {}
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -6,11 +6,6 @@ use std::{
 use crate::pieces::{Color, Move, PieceType, Square};
 
 #[derive(Debug, Clone, Copy)]
-pub struct Board {
-    squares: [Square; 64],
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct Position(usize);
 
 impl From<(usize, usize)> for Position {
@@ -21,10 +16,10 @@ impl From<(usize, usize)> for Position {
     }
 }
 impl From<(i32, i32)> for Position {
-    fn from((file, rank): (i32, i32)) -> Self {
+    fn from((rank, file): (i32, i32)) -> Self {
         assert!(rank >= 0 && rank < 8);
         assert!(file >= 0 && file < 8);
-        Position((file * 8 + rank) as usize)
+        Position((rank * 8 + file) as usize)
     }
 }
 
@@ -32,6 +27,12 @@ impl From<usize> for Position {
     fn from(position: usize) -> Self {
         assert!(position < 64);
         Position(position)
+    }
+}
+
+impl From<&Position> for Position {
+    fn from(position: &Position) -> Self {
+        Position(position.0)
     }
 }
 
@@ -73,6 +74,29 @@ impl Position {
     pub fn file(&self) -> usize {
         self.0 % 8
     }
+
+    pub fn offset(&self, file_offset: i32, rank_offset: i32) -> Option<Position> {
+        let rank = self.rank() as i32 + rank_offset;
+        let file = self.file() as i32 + file_offset;
+        if rank < 0 || rank >= 8 {
+            return None;
+        }
+        if file < 0 || file >= 8 {
+            return None;
+        }
+        Some((rank, file).into())
+    }
+
+    pub fn iterate_offset(&self, file_offset: i32, rank_offset: i32) -> Vec<Position> {
+        // can be at most 7 steps in any direction
+        let x: Vec<Position> = (1..8)
+            .into_iter()
+            .map(|i| self.offset(i * file_offset, i * rank_offset))
+            .flatten()
+            .collect();
+
+        vec![]
+    }
 }
 
 impl Display for Position {
@@ -83,10 +107,17 @@ impl Display for Position {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Board {
+    squares: [Square; 64],
+    pub ply: usize,
+}
+
 impl Board {
     pub fn new() -> Self {
         let mut board = Board {
             squares: [Square::Empty; 64],
+            ply: 0,
         };
 
         {
@@ -128,12 +159,33 @@ impl Board {
         board
     }
 
+    pub fn get_turn(&self) -> Color {
+        if self.ply % 2 == 0 {
+            Color::White
+        } else {
+            Color::Black
+        }
+    }
+
     pub fn get_moves<T>(&self, position: T) -> Option<Vec<Move>>
     where
         T: Into<Position>,
     {
         let pos = position.into();
         self[pos].possible_moves(self, &pos)
+    }
+
+    pub fn apply(&self, mv: &Move) -> Board {
+        let mut res = self.clone();
+
+        if let Square::Occupied(mut piece) = res[mv.from].clone() {
+            piece.most_recent_move = Some(res.ply);
+            res[mv.to] = Square::Occupied(piece);
+            res[mv.from] = Square::Empty;
+            res.ply += 1;
+        }
+
+        res
     }
 }
 
@@ -161,8 +213,14 @@ where
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for file in 0..8 {
+            write!(f, "  {}", file + 1)?;
+        }
+        writeln!(f, "")?;
         for rank in (0..8).rev() {
             // print black on top
+            const RANKS: &[u8; 8] = b"abcdefgh";
+            write!(f, "{}", RANKS[rank] as char)?;
             for file in 0..8 {
                 let square = self[(rank, file)];
                 write!(f, "{}", square)?

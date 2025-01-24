@@ -4,7 +4,14 @@ mod pieces;
 fn main() {
     let board = board::Board::new();
     println!("{}", board);
-    for mv in board.get_moves(b"e2").unwrap() {
+
+    let moves = board.get_moves(b"e2").unwrap();
+
+    println!("{}", moves.len());
+
+    moves.iter().for_each(|mv| {
         println!("{}", mv);
-    }
+        let board = board.apply(mv);
+        println!("{}", board);
+    });
 }
