@@ -39,13 +39,21 @@ where
 
 impl<White: Player, Black: Player> Game<White, Black> {
     pub fn new(white: White, black: Black) -> Game<White, Black> {
-        println!("{}", std::mem::size_of::<Board>());
         Game {
             board: Board::new(),
             previous_states: Vec::new(),
             white,
             black,
         }
+    }
+
+    pub fn from_fen(fen: &str, white: White, black: Black) -> anyhow::Result<Game<White, Black>> {
+        Ok(Game {
+            board: Board::from_fen(fen)?,
+            previous_states: Vec::new(),
+            white,
+            black,
+        })
     }
 
     fn get_next_move(&self) -> Move {

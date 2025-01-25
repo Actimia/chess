@@ -1,4 +1,4 @@
-use std::{f64::INFINITY, fmt::Display, ops::Neg};
+use std::{fmt::Display, ops::Neg};
 
 use rand::Rng;
 
@@ -13,6 +13,15 @@ pub struct EnginePlayer;
 
 impl Player for EnginePlayer {
     fn make_move(&self, board: &Board, color: Color) -> Move {
+        let (eval, best_move) = EnginePlayer::evaluate(board);
+
+        println!("Eval: {}", eval);
+        best_move
+    }
+}
+
+impl EnginePlayer {
+    pub fn evaluate(board: &Board) -> (Evaluation, Move) {
         let (white, black) = board.count_pieces();
         let depth = if white + black < 5 {
             7
@@ -21,12 +30,15 @@ impl Player for EnginePlayer {
         } else {
             4
         };
+        let color = board.get_turn();
         let (eval_board, eval) = negamax_search(board, depth, color);
 
-        println!("Eval: {}", eval);
-        eval_board
-            .last_move
-            .expect("There will always be a last move")
+        (
+            eval,
+            eval_board
+                .last_move
+                .expect("There will always be a last move"),
+        )
     }
 }
 
@@ -220,7 +232,7 @@ fn negamax_search<Node: SearchNode>(
         for child in child_nodes {
             let (_, child_eval) = inner(&child, depth - 1, -beta, -alpha, !color);
             let child_eval = -child_eval;
-            if child_eval > best_eval {
+            if child_eval >= best_eval {
                 best_eval = child_eval;
                 best_child = Some(child);
             }

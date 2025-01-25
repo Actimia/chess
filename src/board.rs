@@ -3,6 +3,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use anyhow::{bail, Context};
+
 use crate::pieces::{Color, Move, Piece, PieceType, SpecialMove};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -136,8 +138,8 @@ impl Board {
             board[b"a1"] = sq(Color::White, PieceType::Rook);
             board[b"b1"] = sq(Color::White, PieceType::Knight);
             board[b"c1"] = sq(Color::White, PieceType::Bishop);
-            board[b"d1"] = sq(Color::White, PieceType::King);
-            board[b"e1"] = sq(Color::White, PieceType::Queen);
+            board[b"d1"] = sq(Color::White, PieceType::Queen);
+            board[b"e1"] = sq(Color::White, PieceType::King);
             board[b"f1"] = sq(Color::White, PieceType::Bishop);
             board[b"g1"] = sq(Color::White, PieceType::Knight);
             board[b"h1"] = sq(Color::White, PieceType::Rook);
@@ -153,8 +155,8 @@ impl Board {
             board[b"a8"] = sq(Color::Black, PieceType::Rook);
             board[b"b8"] = sq(Color::Black, PieceType::Knight);
             board[b"c8"] = sq(Color::Black, PieceType::Bishop);
-            board[b"d8"] = sq(Color::Black, PieceType::King);
-            board[b"e8"] = sq(Color::Black, PieceType::Queen);
+            board[b"d8"] = sq(Color::Black, PieceType::Queen);
+            board[b"e8"] = sq(Color::Black, PieceType::King);
             board[b"f8"] = sq(Color::Black, PieceType::Bishop);
             board[b"g8"] = sq(Color::Black, PieceType::Knight);
             board[b"h8"] = sq(Color::Black, PieceType::Rook);
@@ -171,9 +173,75 @@ impl Board {
         board
     }
 
-    /* pub fn from_pgn(pgn: &str) -> Self {
-        todo!()
-    } */
+    pub fn from_fen(fen: &str) -> anyhow::Result<Self> {
+        let parts: Vec<&str> = fen.split(" ").collect();
+
+        if parts.len() != 6 {
+            bail!("Not correct amount of pieces");
+        }
+
+        fn sq(color: Color, typ: PieceType) -> Option<Piece> {
+            Some(Piece {
+                typ,
+                color,
+                most_recent_move: None,
+            })
+        }
+
+        let active = match parts[1] {
+            "w" => 0,
+            "b" => 1,
+            _ => bail!("invalid active field"),
+        };
+        let halfmoves: usize = parts[4].parse().context("could not parse half-moves")?;
+        let fullmoves: usize = parts[5].parse().context("could not parse full-moves")?;
+        let ply = (fullmoves - 1) * 2 + active;
+        let mut board = Board {
+            squares: [None; 64],
+            ply,
+            last_pawn_move: ply - halfmoves,
+            last_move: None,
+        };
+
+        let pieces = parts[0];
+        for (rank, rank_fen) in pieces.split("/").enumerate() {
+            let mut file: usize = 0;
+
+            let letters: Vec<&str> = rank_fen.split("").collect();
+            for ch in letters {
+                if let Ok(offset) = ch.parse::<usize>() {
+                    file += offset
+                } else {
+                    let piece = match ch {
+                        "" => None,
+                        "P" => sq(Color::White, PieceType::Pawn),
+                        "N" => sq(Color::White, PieceType::Knight),
+                        "B" => sq(Color::White, PieceType::Bishop),
+                        "R" => sq(Color::White, PieceType::Rook),
+                        "Q" => sq(Color::White, PieceType::Queen),
+                        "K" => sq(Color::White, PieceType::King),
+                        "p" => sq(Color::Black, PieceType::Pawn),
+                        "n" => sq(Color::Black, PieceType::Knight),
+                        "b" => sq(Color::Black, PieceType::Bishop),
+                        "r" => sq(Color::Black, PieceType::Rook),
+                        "q" => sq(Color::Black, PieceType::Queen),
+                        "k" => sq(Color::Black, PieceType::King),
+                        _ => bail!("unknown piece"),
+                    };
+                    if piece.is_some() {
+                        board[(7 - rank, file)] = piece;
+                        file += 1;
+                    }
+                }
+            }
+        }
+
+        // todo: implement castling and enpassant
+        let castling = parts[2];
+        let enpassant = parts[3];
+
+        Ok(board)
+    }
 
     pub fn get_turn(&self) -> Color {
         if self.ply % 2 == 0 {
@@ -325,5 +393,34 @@ impl Display for Board {
             writeln!(f, "")?
         }
         Ok(())
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fen_start() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let board1 = Board::new();
+        let board2 = Board::from_fen(fen).unwrap();
+        assert_eq!(board1.squares, board2.squares);
+        assert_eq!(board1.ply, board2.ply);
+    }
+
+    #[test]
+    fn test_fen_2() {
+        let fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+        let board = Board::from_fen(fen).unwrap();
+        assert!(board[b"f3"].is_some());
+        assert_eq!(board.ply, 3);
+    }
+
+    #[test]
+    fn test_fen_3() {
+        let fen = "7Q/p1pbkppp/1p2pq2/3p4/2PP4/2P2N2/P3PPPP/R3KB1R b KQ - 0 11";
+        let board = Board::from_fen(fen).unwrap();
+        assert!(board[b"h8"].is_some());
+        assert_eq!(board.ply, 3);
     }
 }
