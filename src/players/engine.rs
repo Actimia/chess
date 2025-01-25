@@ -13,7 +13,7 @@ pub struct EnginePlayer;
 
 impl Player for EnginePlayer {
     fn make_move(&self, board: &Board, _color: Color) -> Move {
-        let (eval_board, eval) = alpha_beta_search(board, 3);
+        let (eval_board, eval) = alpha_beta_search(board, 4);
 
         println!("Eval: {:.2}", eval);
         eval_board
@@ -62,8 +62,8 @@ impl AlphaBetaNode for Board {
         let eval = white_pieces - black_pieces + noise;
 
         match self.get_turn() {
-            Color::Black => eval,
-            Color::White => -eval,
+            Color::Black => -eval,
+            Color::White => eval,
         }
     }
 }

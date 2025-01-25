@@ -19,7 +19,7 @@ impl Not for Color {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PieceType {
     Pawn,
     Bishop,
