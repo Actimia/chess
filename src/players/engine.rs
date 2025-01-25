@@ -9,9 +9,9 @@ use crate::{
 
 use super::Player;
 
-pub struct EvalPlayer;
+pub struct EnginePlayer;
 
-impl Player for EvalPlayer {
+impl Player for EnginePlayer {
     fn make_move(&self, board: &Board, _color: Color) -> Move {
         let (eval_board, eval) = alpha_beta_search(board, 3);
 

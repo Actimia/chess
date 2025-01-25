@@ -7,8 +7,8 @@ pub use terminal::*;
 mod random;
 pub use random::*;
 
-mod eval;
-pub use eval::*;
+mod engine;
+pub use engine::*;
 
 use crate::{
     board::Board,
