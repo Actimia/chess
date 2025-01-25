@@ -276,7 +276,7 @@ impl Display for Piece {
             (Color::Black, PieceType::Bishop) => "♝",
             (Color::Black, PieceType::Pawn) => "♟",
         };
-        write!(f, " {text} ")
+        write!(f, "{text}")
     }
 }
 

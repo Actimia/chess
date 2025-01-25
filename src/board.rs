@@ -105,9 +105,11 @@ impl Display for Position {
     }
 }
 
+pub type Squares = [Option<Piece>; 64];
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Board {
-    squares: [Option<Piece>; 64],
+    pub squares: Squares,
     pub ply: usize,
     pub last_pawn_move: usize,
     pub last_move: Option<Move>,
@@ -183,6 +185,21 @@ impl Board {
 
     pub fn get_moves(&self, position: &Position) -> Option<Vec<Move>> {
         self[position].map(|p| p.get_moves(&self, position))
+    }
+
+    pub fn count_pieces(&self) -> (u8, u8) {
+        let mut white: u8 = 0;
+        let mut black: u8 = 0;
+        for sq in self.squares {
+            match sq {
+                Some(p) => match p.color {
+                    Color::White => white += 1,
+                    Color::Black => black += 1,
+                },
+                None => {}
+            }
+        }
+        (white, black)
     }
 
     pub fn is_occupied_by(
@@ -284,18 +301,25 @@ where
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         const FILES: &[u8; 8] = b"abcdefgh";
+        write!(f, " ")?;
         for file in 0..8 {
-            write!(f, "  {}", FILES[file] as char)?;
+            write!(f, " {}", FILES[file] as char)?;
         }
         writeln!(f, "")?;
         for rank in (0..8).rev() {
             // print black on top
             write!(f, "{}", rank + 1)?;
             for file in 0..8 {
-                let square = self[(rank, file)];
+                let pos: Position = (rank, file).into();
+                let square = self[pos];
+                let prefix = match self.last_move {
+                    Some(mv) if mv.to == pos => ">",
+                    Some(mv) if mv.from == pos => ">",
+                    _ => " ",
+                };
                 match square {
-                    Some(piece) => write!(f, "{}", piece)?,
-                    None => write!(f, "   ")?,
+                    Some(piece) => write!(f, "{}{}", prefix, piece)?,
+                    None => write!(f, "{} ", prefix)?,
                 }
             }
             writeln!(f, "")?

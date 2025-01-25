@@ -13,7 +13,15 @@ pub struct EnginePlayer;
 
 impl Player for EnginePlayer {
     fn make_move(&self, board: &Board, _color: Color) -> Move {
-        let (eval_board, eval) = alpha_beta_search(board, 4);
+        let (white, black) = board.count_pieces();
+        let depth = if white + black < 5 {
+            10
+        } else if white + black < 10 {
+            6
+        } else {
+            4
+        };
+        let (eval_board, eval) = negamax_search(board, depth);
 
         println!("Eval: {:.2}", eval);
         eval_board
@@ -22,7 +30,7 @@ impl Player for EnginePlayer {
     }
 }
 
-trait AlphaBetaNode: Sized + Copy {
+trait SearchNode: Sized + Copy {
     fn get_next_states(&self) -> Vec<Self>
     where
         Self: Sized + Copy;
@@ -30,7 +38,7 @@ trait AlphaBetaNode: Sized + Copy {
     fn evaluate(&self) -> f64;
 }
 
-impl AlphaBetaNode for Board {
+impl SearchNode for Board {
     fn get_next_states(&self) -> Vec<Board> {
         let pieces = self.get_pieces(self.get_turn());
         pieces
@@ -45,13 +53,21 @@ impl AlphaBetaNode for Board {
         fn sum_piece_values(pieces: Vec<(Position, Piece)>) -> f64 {
             pieces
                 .iter()
-                .map(|(_pos, piece)| match piece.typ {
+                .map(|(pos, piece)| match piece.typ {
                     PieceType::King => 100.0, // technically infinite, but this will probably suffice
                     PieceType::Queen => 9.0,
                     PieceType::Rook => 5.0,
                     PieceType::Bishop => 3.0,
                     PieceType::Knight => 2.75,
-                    PieceType::Pawn => 1.0,
+                    PieceType::Pawn => {
+                        // values for white
+                        const PAWN_VALUES: [f64; 8] = [0.0, 1.0, 1.05, 1.1, 1.25, 1.6, 2.0, 9.0];
+                        let idx = match piece.color {
+                            Color::White => pos.rank(),
+                            Color::Black => 7 - pos.rank(),
+                        };
+                        PAWN_VALUES[idx]
+                    }
                 })
                 .sum()
         }
@@ -68,8 +84,8 @@ impl AlphaBetaNode for Board {
     }
 }
 
-fn alpha_beta_search<State: AlphaBetaNode>(initial: &State, max_depth: usize) -> (State, f64) {
-    fn inner<State: AlphaBetaNode>(
+fn alpha_beta_search<State: SearchNode>(initial: &State, max_depth: usize) -> (State, f64) {
+    fn inner<State: SearchNode>(
         state: &State,
         depth: usize,
         mut alpha: f64,
@@ -117,4 +133,39 @@ fn alpha_beta_search<State: AlphaBetaNode>(initial: &State, max_depth: usize) ->
     }
 
     inner(initial, max_depth, -INFINITY, INFINITY, true)
+}
+
+fn negamax_search<Node: SearchNode>(initial: &Node, max_depth: usize) -> (Node, f64) {
+    fn inner<Node: SearchNode>(
+        node: &Node,
+        depth: usize,
+        mut alpha: f64,
+        beta: f64,
+        color: f64,
+    ) -> (Node, f64) {
+        let child_nodes = node.get_next_states();
+        if depth == 0 || child_nodes.is_empty() {
+            let eval = color * node.evaluate();
+            // println!("leaf: {} {} {}", eval, alpha, beta);
+            return (*node, eval);
+        }
+
+        let mut best_eval = -INFINITY;
+        let mut best_child = None;
+        for child in child_nodes {
+            let (_, child_eval) = inner(&child, depth - 1, -beta, -alpha, -color);
+            let child_value = -child_eval;
+            if child_value > best_eval {
+                best_eval = child_value;
+                best_child = Some(child);
+            }
+            alpha = alpha.max(child_value);
+            if alpha >= beta {
+                break;
+            }
+        }
+        (best_child.unwrap(), best_eval)
+    }
+
+    inner(initial, max_depth, -INFINITY, INFINITY, 1.0)
 }
