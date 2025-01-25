@@ -1,4 +1,4 @@
-use std::f64::INFINITY;
+use std::{f64::INFINITY, fmt::Display, ops::Neg};
 
 use rand::Rng;
 
@@ -12,21 +12,66 @@ use super::Player;
 pub struct EnginePlayer;
 
 impl Player for EnginePlayer {
-    fn make_move(&self, board: &Board, _color: Color) -> Move {
+    fn make_move(&self, board: &Board, color: Color) -> Move {
         let (white, black) = board.count_pieces();
         let depth = if white + black < 5 {
-            10
+            7
         } else if white + black < 10 {
-            6
+            5
         } else {
             4
         };
-        let (eval_board, eval) = negamax_search(board, depth);
+        let (eval_board, eval) = negamax_search(board, depth, color);
 
-        println!("Eval: {:.2}", eval);
+        println!("Eval: {}", eval);
         eval_board
             .last_move
             .expect("There will always be a last move")
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Evaluation {
+    Win(usize),
+    Eval(f64),
+    Loss(usize),
+}
+
+impl Display for Evaluation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Evaluation::Win(moves) => write!(f, "W{}", moves),
+            Evaluation::Eval(eval) => write!(f, "{:.2}", eval),
+            Evaluation::Loss(moves) => write!(f, "L{}", moves),
+        }
+    }
+}
+
+impl PartialOrd for Evaluation {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            // wins in fewer moves are better
+            (Evaluation::Win(left), Evaluation::Win(right)) => right.partial_cmp(left),
+            (Evaluation::Win(_), _) => Some(std::cmp::Ordering::Greater),
+            (_, Evaluation::Win(_)) => Some(std::cmp::Ordering::Less),
+            (Evaluation::Eval(left), Evaluation::Eval(right)) => left.partial_cmp(right),
+            (Evaluation::Eval(_), _) => Some(std::cmp::Ordering::Greater),
+            (_, Evaluation::Eval(_)) => Some(std::cmp::Ordering::Less),
+            // losses in more moves are better
+            (Evaluation::Loss(left), Evaluation::Loss(right)) => left.partial_cmp(right),
+        }
+    }
+}
+
+impl Neg for Evaluation {
+    type Output = Evaluation;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Evaluation::Win(moves) => Evaluation::Loss(moves),
+            Evaluation::Eval(eval) => Evaluation::Eval(-eval),
+            Evaluation::Loss(moves) => Evaluation::Win(moves),
+        }
     }
 }
 
@@ -35,7 +80,7 @@ trait SearchNode: Sized + Copy {
     where
         Self: Sized + Copy;
 
-    fn evaluate(&self) -> f64;
+    fn evaluate(&self) -> Evaluation;
 }
 
 impl SearchNode for Board {
@@ -49,7 +94,23 @@ impl SearchNode for Board {
             .collect()
     }
 
-    fn evaluate(&self) -> f64 {
+    fn evaluate(&self) -> Evaluation {
+        let black = self.get_pieces(Color::Black);
+        if black
+            .iter()
+            .find(|(_, p)| p.typ == PieceType::King)
+            .is_none()
+        {
+            return Evaluation::Win(0);
+        }
+        let white = self.get_pieces(Color::White);
+        if white
+            .iter()
+            .find(|(_, p)| p.typ == PieceType::King)
+            .is_none()
+        {
+            return Evaluation::Loss(0);
+        }
         fn sum_piece_values(pieces: Vec<(Position, Piece)>) -> f64 {
             pieces
                 .iter()
@@ -71,19 +132,15 @@ impl SearchNode for Board {
                 })
                 .sum()
         }
-        let black_pieces: f64 = sum_piece_values(self.get_pieces(Color::Black));
-        let white_pieces: f64 = sum_piece_values(self.get_pieces(Color::White));
+        let black_pieces: f64 = sum_piece_values(black);
+        let white_pieces: f64 = sum_piece_values(white);
 
         let noise: f64 = rand::thread_rng().gen_range(-0.1..=0.1);
-        let eval = white_pieces - black_pieces + noise;
-
-        match self.get_turn() {
-            Color::Black => -eval,
-            Color::White => eval,
-        }
+        Evaluation::Eval(white_pieces - black_pieces + noise)
     }
 }
 
+/*
 fn alpha_beta_search<State: SearchNode>(initial: &State, max_depth: usize) -> (State, f64) {
     fn inner<State: SearchNode>(
         state: &State,
@@ -134,32 +191,42 @@ fn alpha_beta_search<State: SearchNode>(initial: &State, max_depth: usize) -> (S
 
     inner(initial, max_depth, -INFINITY, INFINITY, true)
 }
+*/
 
-fn negamax_search<Node: SearchNode>(initial: &Node, max_depth: usize) -> (Node, f64) {
+fn negamax_search<Node: SearchNode>(
+    initial: &Node,
+    max_depth: usize,
+    color: Color,
+) -> (Node, Evaluation) {
     fn inner<Node: SearchNode>(
         node: &Node,
         depth: usize,
-        mut alpha: f64,
-        beta: f64,
-        color: f64,
-    ) -> (Node, f64) {
+        mut alpha: Evaluation,
+        beta: Evaluation,
+        color: Color, // maximizing player
+    ) -> (Node, Evaluation) {
         let child_nodes = node.get_next_states();
         if depth == 0 || child_nodes.is_empty() {
-            let eval = color * node.evaluate();
+            let eval = match color {
+                Color::Black => -node.evaluate(),
+                Color::White => node.evaluate(),
+            };
             // println!("leaf: {} {} {}", eval, alpha, beta);
             return (*node, eval);
         }
 
-        let mut best_eval = -INFINITY;
+        let mut best_eval = Evaluation::Loss(0);
         let mut best_child = None;
         for child in child_nodes {
-            let (_, child_eval) = inner(&child, depth - 1, -beta, -alpha, -color);
-            let child_value = -child_eval;
-            if child_value > best_eval {
-                best_eval = child_value;
+            let (_, child_eval) = inner(&child, depth - 1, -beta, -alpha, !color);
+            let child_eval = -child_eval;
+            if child_eval > best_eval {
+                best_eval = child_eval;
                 best_child = Some(child);
             }
-            alpha = alpha.max(child_value);
+            if (alpha < child_eval) {
+                alpha = child_eval;
+            }
             if alpha >= beta {
                 break;
             }
@@ -167,5 +234,11 @@ fn negamax_search<Node: SearchNode>(initial: &Node, max_depth: usize) -> (Node, 
         (best_child.unwrap(), best_eval)
     }
 
-    inner(initial, max_depth, -INFINITY, INFINITY, 1.0)
+    inner(
+        initial,
+        max_depth,
+        Evaluation::Loss(1),
+        Evaluation::Win(1),
+        color,
+    )
 }
