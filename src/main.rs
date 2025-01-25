@@ -51,9 +51,9 @@ fn eval(fen: Option<String>) -> anyhow::Result<()> {
 }
 
 fn play(fen: Option<String>) -> anyhow::Result<()> {
-    let white = TerminalPlayer;
+    //let white = TerminalPlayer;
     // let white = RandomPlayer;
-    // let white = EnginePlayer;
+    let white = EnginePlayer;
     // let white = PrintMoves::wrap(white);
     let white = PrintBoard::wrap(white);
     // let white = ManualStep::wrap(white);

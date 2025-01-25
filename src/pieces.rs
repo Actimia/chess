@@ -112,7 +112,7 @@ impl Piece {
                     // TODO: other promotions
                     Some(SpecialMove::Promotion(PieceType::Queen))
                 } else {
-                    None
+                    self.is_capture(board, &to)
                 };
 
                 Move {
@@ -177,7 +177,7 @@ impl Piece {
             .map(|to| Move {
                 from: *knight,
                 to,
-                special: None,
+                special: self.is_capture(board, &to),
             })
             .collect()
     }
@@ -196,7 +196,7 @@ impl Piece {
             .map(|to| Move {
                 from: *king,
                 to,
-                special: None,
+                special: self.is_capture(board, &to),
             })
             .collect();
 
@@ -226,6 +226,10 @@ impl Piece {
         moves
     }
 
+    fn is_capture(&self, board: &Board, pos: &Position) -> Option<SpecialMove> {
+        board[pos].map(|p| SpecialMove::Capture(p.typ))
+    }
+
     fn slide_helper(&self, board: &Board, from: &Position, offsets: Vec<(i32, i32)>) -> Vec<Move> {
         let mut moves = Vec::new();
         for (file, rank) in offsets {
@@ -250,7 +254,7 @@ impl Piece {
                 .map(|to| Move {
                     from: *from,
                     to,
-                    special: None,
+                    special: self.is_capture(board, &to),
                 })
                 .collect();
             moves.extend(new_moves);
@@ -282,6 +286,7 @@ impl Display for Piece {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SpecialMove {
+    Capture(PieceType),           // captures a piece
     EnPassant(Position),          // position of the pawn that is captured
     Promotion(PieceType),         // type of piece to promote to
     Castling(Position, Position), // start and end position of the rook

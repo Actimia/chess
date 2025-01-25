@@ -270,6 +270,7 @@ impl Board {
 
             if let Some(special) = mv.special {
                 match special {
+                    SpecialMove::Capture(_) => {}
                     SpecialMove::EnPassant(pos) => res[pos] = None,
                     SpecialMove::Promotion(new_typ) => {
                         piece.typ = new_typ;
@@ -344,6 +345,7 @@ impl Display for Board {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
