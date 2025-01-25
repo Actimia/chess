@@ -1,9 +1,6 @@
 use rand::Rng;
 
-use crate::{
-    board::Board,
-    pieces::{Color, Move},
-};
+use crate::{board::Board, pieces::Move};
 
 use super::Player;
 
@@ -11,7 +8,8 @@ use super::Player;
 pub struct RandomPlayer;
 
 impl Player for RandomPlayer {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
+    fn make_move(&self, board: &Board) -> Move {
+        let color = board.current_turn();
         let pieces = board.get_pieces(color);
         let moves: Vec<Move> = pieces
             .iter()

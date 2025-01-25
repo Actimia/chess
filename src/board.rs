@@ -118,62 +118,10 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Self {
-        let mut board = Board {
-            squares: [None; 64],
-            ply: 0,
-            last_pawn_move: 0,
-            last_move: None,
-        };
+    pub fn new(fen: Option<String>) -> anyhow::Result<Self> {
+        const STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let fen = fen.unwrap_or(STARTING_POSITION.into());
 
-        fn sq(color: Color, typ: PieceType) -> Option<Piece> {
-            Some(Piece {
-                typ,
-                color,
-                most_recent_move: None,
-            })
-        }
-
-        {
-            board[b"a1"] = sq(Color::White, PieceType::Rook);
-            board[b"b1"] = sq(Color::White, PieceType::Knight);
-            board[b"c1"] = sq(Color::White, PieceType::Bishop);
-            board[b"d1"] = sq(Color::White, PieceType::Queen);
-            board[b"e1"] = sq(Color::White, PieceType::King);
-            board[b"f1"] = sq(Color::White, PieceType::Bishop);
-            board[b"g1"] = sq(Color::White, PieceType::Knight);
-            board[b"h1"] = sq(Color::White, PieceType::Rook);
-            board[b"a2"] = sq(Color::White, PieceType::Pawn);
-            board[b"b2"] = sq(Color::White, PieceType::Pawn);
-            board[b"c2"] = sq(Color::White, PieceType::Pawn);
-            board[b"d2"] = sq(Color::White, PieceType::Pawn);
-            board[b"e2"] = sq(Color::White, PieceType::Pawn);
-            board[b"f2"] = sq(Color::White, PieceType::Pawn);
-            board[b"g2"] = sq(Color::White, PieceType::Pawn);
-            board[b"h2"] = sq(Color::White, PieceType::Pawn);
-
-            board[b"a8"] = sq(Color::Black, PieceType::Rook);
-            board[b"b8"] = sq(Color::Black, PieceType::Knight);
-            board[b"c8"] = sq(Color::Black, PieceType::Bishop);
-            board[b"d8"] = sq(Color::Black, PieceType::Queen);
-            board[b"e8"] = sq(Color::Black, PieceType::King);
-            board[b"f8"] = sq(Color::Black, PieceType::Bishop);
-            board[b"g8"] = sq(Color::Black, PieceType::Knight);
-            board[b"h8"] = sq(Color::Black, PieceType::Rook);
-            board[b"a7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"b7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"c7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"d7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"e7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"f7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"g7"] = sq(Color::Black, PieceType::Pawn);
-            board[b"h7"] = sq(Color::Black, PieceType::Pawn);
-        }
-
-        board
-    }
-
-    pub fn from_fen(fen: &str) -> anyhow::Result<Self> {
         let parts: Vec<&str> = fen.split(" ").collect();
 
         if parts.len() != 6 {
@@ -237,13 +185,13 @@ impl Board {
         }
 
         // todo: implement castling and enpassant
-        let castling = parts[2];
-        let enpassant = parts[3];
+        let _castling = parts[2];
+        let _enpassant = parts[3];
 
         Ok(board)
     }
 
-    pub fn get_turn(&self) -> Color {
+    pub fn current_turn(&self) -> Color {
         if self.ply % 2 == 0 {
             Color::White
         } else {
@@ -400,27 +348,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_fen_start() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let board1 = Board::new();
-        let board2 = Board::from_fen(fen).unwrap();
-        assert_eq!(board1.squares, board2.squares);
-        assert_eq!(board1.ply, board2.ply);
-    }
-
-    #[test]
-    fn test_fen_2() {
+    fn test_fen_1() {
         let fen = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
-        let board = Board::from_fen(fen).unwrap();
+        let board = Board::new(Some(fen.into())).unwrap();
         assert!(board[b"f3"].is_some());
         assert_eq!(board.ply, 3);
     }
 
     #[test]
-    fn test_fen_3() {
+    fn test_fen_2() {
         let fen = "7Q/p1pbkppp/1p2pq2/3p4/2PP4/2P2N2/P3PPPP/R3KB1R b KQ - 0 11";
-        let board = Board::from_fen(fen).unwrap();
+        let board = Board::new(Some(fen.into())).unwrap();
         assert!(board[b"h8"].is_some());
-        assert_eq!(board.ply, 3);
+        assert_eq!(board.ply, 21);
     }
 }

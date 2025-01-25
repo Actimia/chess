@@ -1,9 +1,6 @@
 use std::io;
 
-use crate::{
-    board::Board,
-    pieces::{Color, Move},
-};
+use crate::{board::Board, pieces::Move};
 
 use super::Player;
 
@@ -12,10 +9,10 @@ pub struct PrintBoard<P: Player> {
 }
 
 impl<P: Player> Player for PrintBoard<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
+    fn make_move(&self, board: &Board) -> Move {
         println!("{}", board);
         println!();
-        self.player.make_move(board, color)
+        self.player.make_move(board)
     }
 }
 
@@ -32,8 +29,8 @@ pub struct PrintMoves<P: Player> {
 }
 
 impl<P: Player> Player for PrintMoves<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
-        let mv = self.player.make_move(board, color);
+    fn make_move(&self, board: &Board) -> Move {
+        let mv = self.player.make_move(board);
         println!("{}", mv);
         mv
     }
@@ -52,10 +49,10 @@ pub struct ManualStep<P: Player> {
 }
 
 impl<P: Player> Player for ManualStep<P> {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
+    fn make_move(&self, board: &Board) -> Move {
         let mut input = String::new();
         let _ = io::stdin().read_line(&mut input);
-        self.player.make_move(board, color)
+        self.player.make_move(board)
     }
 }
 

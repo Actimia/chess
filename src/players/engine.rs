@@ -12,7 +12,7 @@ use super::Player;
 pub struct EnginePlayer;
 
 impl Player for EnginePlayer {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
+    fn make_move(&self, board: &Board) -> Move {
         let (eval, best_move) = EnginePlayer::evaluate(board);
 
         println!("Eval: {}", eval);
@@ -30,7 +30,7 @@ impl EnginePlayer {
         } else {
             4
         };
-        let color = board.get_turn();
+        let color = board.current_turn();
         let (eval_board, eval) = negamax_search(board, depth, color);
 
         (
@@ -47,6 +47,16 @@ pub enum Evaluation {
     Win(usize),
     Eval(f64),
     Loss(usize),
+}
+
+impl Evaluation {
+    fn increment_depth(&self) -> Evaluation {
+        match self {
+            Evaluation::Win(depth) => Evaluation::Win(depth + 1),
+            Evaluation::Eval(eval) => Evaluation::Eval(*eval),
+            Evaluation::Loss(depth) => Evaluation::Loss(depth + 1),
+        }
+    }
 }
 
 impl Display for Evaluation {
@@ -97,7 +107,7 @@ trait SearchNode: Sized + Copy {
 
 impl SearchNode for Board {
     fn get_next_states(&self) -> Vec<Board> {
-        let pieces = self.get_pieces(self.get_turn());
+        let pieces = self.get_pieces(self.current_turn());
         pieces
             .iter()
             .flat_map(|(pos, _)| self.get_moves(pos))
@@ -236,14 +246,14 @@ fn negamax_search<Node: SearchNode>(
                 best_eval = child_eval;
                 best_child = Some(child);
             }
-            if (alpha < child_eval) {
+            if alpha < child_eval {
                 alpha = child_eval;
             }
             if alpha >= beta {
                 break;
             }
         }
-        (best_child.unwrap(), best_eval)
+        (best_child.unwrap(), best_eval.increment_depth())
     }
 
     inner(
@@ -253,4 +263,32 @@ fn negamax_search<Node: SearchNode>(
         Evaluation::Win(1),
         color,
     )
+}
+
+mod tests {
+    use super::Evaluation;
+
+    #[test]
+    fn test_eval_cmp() {
+        let w1 = Evaluation::Win(1);
+        let w4 = Evaluation::Win(4);
+
+        let better = Evaluation::Eval(5.3);
+        let even = Evaluation::Eval(0.5);
+        let worse = Evaluation::Eval(-5.0);
+
+        let l4 = Evaluation::Loss(4);
+        let l1 = Evaluation::Loss(1);
+
+        assert!(w1 > w4);
+        assert!(w1 > better);
+        assert!(w1 > l4);
+
+        assert!(better > even);
+        assert!(even > worse);
+
+        assert!(even > l4);
+
+        assert!(l4 > l1);
+    }
 }

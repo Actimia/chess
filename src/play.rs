@@ -38,18 +38,13 @@ where
 }
 
 impl<White: Player, Black: Player> Game<White, Black> {
-    pub fn new(white: White, black: Black) -> Game<White, Black> {
-        Game {
-            board: Board::new(),
-            previous_states: Vec::new(),
-            white,
-            black,
-        }
-    }
-
-    pub fn from_fen(fen: &str, white: White, black: Black) -> anyhow::Result<Game<White, Black>> {
+    pub fn new(
+        fen: Option<String>,
+        white: White,
+        black: Black,
+    ) -> anyhow::Result<Game<White, Black>> {
         Ok(Game {
-            board: Board::from_fen(fen)?,
+            board: Board::new(fen)?,
             previous_states: Vec::new(),
             white,
             black,
@@ -57,9 +52,9 @@ impl<White: Player, Black: Player> Game<White, Black> {
     }
 
     fn get_next_move(&self) -> Move {
-        match self.board.get_turn() {
-            Color::White => self.white.make_move(&self.board, Color::White),
-            Color::Black => self.black.make_move(&self.board, Color::Black),
+        match self.board.current_turn() {
+            Color::White => self.white.make_move(&self.board),
+            Color::Black => self.black.make_move(&self.board),
         }
     }
 

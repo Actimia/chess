@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     board::{Board, Position},
-    pieces::{Color, Move},
+    pieces::Move,
 };
 
 use super::Player;
@@ -54,7 +54,8 @@ impl TerminalPlayer {
 }
 
 impl Player for TerminalPlayer {
-    fn make_move(&self, board: &Board, color: Color) -> Move {
+    fn make_move(&self, board: &Board) -> Move {
+        let color = board.current_turn();
         loop {
             let from = self.read_position("What piece to move?");
 
