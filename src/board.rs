@@ -238,7 +238,10 @@ impl Board {
             if let Some(special) = mv.special {
                 match special {
                     SpecialMove::EnPassant(pos) => res[pos] = None,
-                    SpecialMove::Promotion(typ) => piece.typ = typ,
+                    SpecialMove::Promotion(new_typ) => {
+                        piece.typ = new_typ;
+                        res[mv.to] = Some(piece); // second assign is needed
+                    }
                     SpecialMove::Castling(rook_from, rook_to) => {
                         if let Some(mut rook) = res[rook_from].clone() {
                             rook.most_recent_move = Some(res.ply);

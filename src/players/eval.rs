@@ -61,11 +61,9 @@ impl AlphaBetaNode for Board {
         let noise: f64 = rand::thread_rng().gen_range(-0.1..=0.1);
         let eval = white_pieces - black_pieces + noise;
 
-        dbg!(eval);
-
         match self.get_turn() {
-            Color::Black => -eval,
-            Color::White => eval,
+            Color::Black => eval,
+            Color::White => -eval,
         }
     }
 }
@@ -82,7 +80,7 @@ fn alpha_beta_search<State: AlphaBetaNode>(initial: &State, max_depth: usize) ->
         if depth == 0 || child_states.is_empty() {
             let eval = state.evaluate();
             // println!("leaf: {} {} {}", eval, alpha, beta);
-            return (state.clone(), eval);
+            return (*state, eval);
         }
 
         if maximize {

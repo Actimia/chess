@@ -93,7 +93,11 @@ impl<White: Player, Black: Player> Game<White, Black> {
 
             if let Some(result) = self.is_gameover() {
                 println!("{}", self.board);
-                println!("Game over: {} after {} moves", result, self.board.ply / 2);
+                println!(
+                    "Game over: {} after {} moves",
+                    result,
+                    1 + self.board.ply / 2
+                );
                 break;
             }
         }
