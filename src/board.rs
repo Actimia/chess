@@ -291,6 +291,65 @@ impl Board {
 
         res
     }
+
+    pub fn get_fen_pieces(&self) -> String {
+        let mut res: String = String::new();
+
+        for rank in (0..8).rev() {
+            let mut ws = 0;
+            for file in 0..8 {
+                match self[(rank, file)] {
+                    Some(p) => {
+                        if ws > 0 {
+                            res.push_str(format!("{}", ws).as_str());
+                            ws = 0;
+                        }
+                        res.push_str(match (p.color, p.typ) {
+                            (Color::White, PieceType::King) => "K",
+                            (Color::White, PieceType::Queen) => "Q",
+                            (Color::White, PieceType::Rook) => "R",
+                            (Color::White, PieceType::Knight) => "N",
+                            (Color::White, PieceType::Bishop) => "B",
+                            (Color::White, PieceType::Pawn) => "P",
+                            (Color::Black, PieceType::King) => "k",
+                            (Color::Black, PieceType::Queen) => "q",
+                            (Color::Black, PieceType::Rook) => "r",
+                            (Color::Black, PieceType::Knight) => "n",
+                            (Color::Black, PieceType::Bishop) => "b",
+                            (Color::Black, PieceType::Pawn) => "p",
+                        })
+                    }
+                    None => ws += 1,
+                }
+            }
+            if ws > 0 {
+                res.push_str(format!("{}", ws).as_str());
+            }
+            if rank != 0 {
+                res.push('/');
+            }
+        }
+
+        res
+    }
+
+    pub fn get_fen(&self) -> String {
+        let pieces = self.get_fen_pieces();
+
+        let active = match self.current_turn() {
+            Color::White => "w",
+            Color::Black => "b",
+        };
+
+        // TODO: implement castling and enpassant for fen
+        let castling = "-";
+        let enpassant = "-";
+
+        let halfmoves = self.ply - self.last_pawn_move;
+        let fullmoves = self.ply / 2 + 1;
+
+        format!("{pieces} {active} {castling} {enpassant} {halfmoves} {fullmoves}")
+    }
 }
 
 impl<T> Index<T> for Board
@@ -363,5 +422,24 @@ mod tests {
         let board = Board::new(Some(fen.into())).unwrap();
         assert!(board[b"h8"].is_some());
         assert_eq!(board.ply, 21);
+    }
+
+    #[test]
+    fn test_fen_pieces() {
+        let pieces = "7Q/p1pbkppp/1p2pq2/3p4/2PP4/2P2N2/P3PPPP/R3KB1R";
+        let fen = format!("{pieces} b KQ - 0 11");
+        let board = Board::new(Some(fen.into())).unwrap();
+
+        let new_pieces = board.get_fen_pieces();
+        assert_eq!(pieces, new_pieces)
+    }
+
+    #[test]
+    fn test_fen_creation() {
+        let fen = "7Q/p1pbkppp/1p2pq2/3p4/2PP4/2P2N2/P3PPPP/R3KB1R b - - 0 11";
+        let board = Board::new(Some(fen.into())).unwrap();
+
+        let new_fen = board.get_fen();
+        assert_eq!(fen, new_fen)
     }
 }

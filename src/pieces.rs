@@ -19,14 +19,14 @@ impl Not for Color {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum PieceType {
-    Pawn,
-    Bishop,
-    Knight,
-    Rook,
-    Queen,
     King,
+    Queen,
+    Rook,
+    Knight,
+    Bishop,
+    Pawn,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -207,7 +207,10 @@ impl Piece {
                 let mut can_castle: Option<Position> = None; // rooks position
                 for pos in king.iterate_offset(dir, 0) {
                     if let Some(piece) = board[pos] {
-                        if piece.typ == PieceType::Rook && piece.most_recent_move.is_none() {
+                        if piece.color == self.color
+                            && piece.typ == PieceType::Rook
+                            && piece.most_recent_move.is_none()
+                        {
                             can_castle = Some(pos)
                         } else {
                             break;
@@ -304,6 +307,33 @@ impl Move {}
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} -> {}", self.from, self.to)?;
+        self.special.map(|sp| match sp {
+            SpecialMove::Capture(_) => write!(f, " (capture)"),
+            SpecialMove::EnPassant(_) => write!(f, " (en passant)"),
+            SpecialMove::Promotion(_) => write!(f, " (promotion)"),
+            SpecialMove::Castling(_, _) => write!(f, " (castle)"),
+        });
         Ok(())
+    }
+}
+
+impl Ord for Move {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self.special, other.special) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (Some(sp1), Some(sp2)) => match (sp1, sp2) {
+                (SpecialMove::Capture(p1), SpecialMove::Capture(p2)) => p1.cmp(&p2),
+                (SpecialMove::Capture(_), _) => std::cmp::Ordering::Greater,
+                (_, _) => std::cmp::Ordering::Equal,
+            },
+        }
+    }
+}
+
+impl PartialOrd for Move {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }

@@ -11,6 +11,7 @@ pub struct PrintBoard<P: Player> {
 impl<P: Player> Player for PrintBoard<P> {
     fn make_move(&self, board: &Board) -> Move {
         println!("{}", board);
+        println!("{}", board.get_fen());
         println!();
         self.player.make_move(board)
     }

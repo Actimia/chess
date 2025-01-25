@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
-    board::{Board, Squares},
+    board::Board,
     pieces::{Color, Move, PieceType},
     players::Player,
 };
@@ -32,7 +32,7 @@ where
     B: Player,
 {
     board: Board,
-    previous_states: Vec<Squares>,
+    previous_states: Vec<String>,
     white: W,
     black: B,
 }
@@ -59,10 +59,11 @@ impl<White: Player, Black: Player> Game<White, Black> {
     }
 
     fn is_gameover(&self) -> Option<GameResult> {
+        let fen_pieces = self.board.get_fen_pieces();
         if self
             .previous_states
             .iter()
-            .filter(|prev| **prev == self.board.squares)
+            .filter(|prev| **prev == fen_pieces)
             .count()
             >= 2
         {
@@ -93,7 +94,7 @@ impl<White: Player, Black: Player> Game<White, Black> {
             let mv = self.get_next_move();
             // For the purposes of determining a draw, we could clear this
             // if we see a pawn move or capture
-            self.previous_states.push(self.board.squares);
+            self.previous_states.push(self.board.get_fen_pieces());
             self.board = self.board.apply(&mv);
 
             if let Some(result) = self.is_gameover() {

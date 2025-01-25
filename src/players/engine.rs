@@ -112,12 +112,16 @@ impl SearchNode for Board {
         if let None = pieces.iter().find(|(_, p)| p.typ == PieceType::King) {
             return Vec::new();
         }
-        pieces
+        let mut moves: Vec<Move> = pieces
             .iter()
             .flat_map(|(pos, _)| self.get_moves(pos))
             .flatten()
-            .map(|mv| self.apply(&mv))
-            .collect()
+            .collect();
+
+        // will search through moves that are likely to be decisive (captures etc) first
+        moves.sort();
+
+        moves.iter().map(|mv| self.apply(&mv)).collect()
     }
 
     fn evaluate(&self) -> Evaluation {
@@ -210,7 +214,7 @@ fn negamax_search<Node: SearchNode>(
                 best_child = Some(child);
             }
 
-            //alpha = alpha.max(child_eval);
+            alpha = alpha.max(child_eval);
             if child_eval > alpha {
                 eprintln!(
                     "{indent}  update alpha: {} > {}, beta = {}",
