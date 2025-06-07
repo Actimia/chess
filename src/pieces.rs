@@ -3,6 +3,7 @@ use std::{fmt::Display, ops::Not};
 use crate::board::{Board, Position};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[repr(u8)]
 pub enum Color {
     White,
     Black,
@@ -20,6 +21,7 @@ impl Not for Color {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u8)]
 pub enum PieceType {
     King,
     Queen,

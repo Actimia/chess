@@ -1,8 +1,9 @@
-use board::Board;
+use board::{Board, Squares};
 use clap::{Parser, Subcommand};
 use play::Game;
 use players::{EnginePlayer, PrintBoard, TerminalPlayer};
 
+mod bitboards;
 mod board;
 mod pieces;
 mod play;
@@ -51,7 +52,7 @@ fn eval(fen: Option<String>) -> anyhow::Result<()> {
 }
 
 fn play(fen: Option<String>) -> anyhow::Result<()> {
-    //let white = TerminalPlayer;
+    // let white = TerminalPlayer;
     // let white = RandomPlayer;
     let white = EnginePlayer;
     // let white = PrintMoves::wrap(white);

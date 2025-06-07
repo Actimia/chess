@@ -17,6 +17,7 @@ impl From<(usize, usize)> for Position {
         Position(rank * 8 + file)
     }
 }
+
 impl From<(i32, i32)> for Position {
     fn from((rank, file): (i32, i32)) -> Self {
         assert!(rank >= 0 && rank < 8);
@@ -125,7 +126,7 @@ impl Board {
         let parts: Vec<&str> = fen.split(" ").collect();
 
         if parts.len() != 6 {
-            bail!("Not correct amount of pieces");
+            bail!("Incorrect number of parts");
         }
 
         fn sq(color: Color, typ: PieceType) -> Option<Piece> {

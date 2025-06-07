@@ -15,7 +15,7 @@ impl Player for EnginePlayer {
     fn make_move(&self, board: &Board) -> Move {
         let (eval, best_move) = EnginePlayer::evaluate(board);
 
-        println!("Eval: {}", eval);
+        //println!("Eval: {}", eval);
         best_move
     }
 }
